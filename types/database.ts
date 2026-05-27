@@ -32,6 +32,7 @@ export interface Database {
           level?: number;
           household_id?: string | null;
         };
+        Relationships: [];
       };
       households: {
         Row: {
@@ -52,6 +53,7 @@ export interface Database {
           name?: string;
           invite_code?: string;
         };
+        Relationships: [];
       };
       chores: {
         Row: {
@@ -89,6 +91,7 @@ export interface Database {
           status?: 'pending' | 'in_progress' | 'completed' | 'approved';
           recurrence?: 'none' | 'daily' | 'weekly' | 'monthly';
         };
+        Relationships: [];
       };
       rewards: {
         Row: {
@@ -114,7 +117,12 @@ export interface Database {
           description?: string | null;
           points_cost?: number;
         };
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }
