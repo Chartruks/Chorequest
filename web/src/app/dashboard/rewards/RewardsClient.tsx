@@ -44,15 +44,15 @@ export default function RewardsClient({ profile, initialRewards }: Props) {
     await supabase.from('profiles').update({ points: profile.points - reward.points_cost }).eq('id', profile.id);
     setRedeeming(null);
     router.refresh();
-    alert(`🎉 Redeemed "${reward.title}"! Show this to a parent.`);
+    alert(`🎉 Reward unlocked: "${reward.title}"! Show this to your Commander.`);
   }
 
   if (!profile?.household_id) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-6xl mb-4">🎀</span>
-        <h2 className="text-2xl font-bold mb-2 text-white">No Household Yet</h2>
-        <p style={{ color: '#888' }}>Join a household to see rewards.</p>
+        <span className="text-6xl mb-4">💫</span>
+        <h2 className="text-2xl font-bold mb-2 text-white">No Crew Yet</h2>
+        <p style={{ color: '#6b6b8a' }}>Join a crew to see rewards.</p>
       </div>
     );
   }
@@ -61,54 +61,54 @@ export default function RewardsClient({ profile, initialRewards }: Props) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-black" style={{ color: '#FFD700' }}>🎁 Rewards</h1>
-          <p className="text-sm mt-1" style={{ color: '#FFD700' }}>You have ⭐ {profile.points} points</p>
+          <h1 className="text-3xl font-black" style={{ color: '#00e5ff' }}>🎁 Rewards</h1>
+          <p className="text-sm mt-1" style={{ color: '#00e5ff' }}>Balance: ⭐ {profile.points} credits</p>
         </div>
         {profile.role === 'parent' && (
-          <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 rounded-xl font-bold" style={{ backgroundColor: '#FFD700', color: '#1a1a2e' }}>
+          <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 rounded-xl font-bold" style={{ backgroundColor: '#00e5ff', color: '#05050f' }}>
             + Add Reward
           </button>
         )}
       </div>
 
       {showForm && (
-        <form onSubmit={addReward} className="rounded-2xl p-6 mb-6 border space-y-3" style={{ background: '#16213e', borderColor: '#FFD700' }}>
+        <form onSubmit={addReward} className="rounded-2xl p-6 mb-6 border space-y-3" style={{ background: '#0d0d1f', borderColor: '#00e5ff' }}>
           <h3 className="font-bold text-white">New Reward</h3>
-          <input required placeholder="Reward title" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-xl px-4 py-3 text-white outline-none" style={{ background: '#1a1a2e', border: '1px solid #2a2a5a' }} />
-          <input placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-xl px-4 py-3 text-white outline-none" style={{ background: '#1a1a2e', border: '1px solid #2a2a5a' }} />
+          <input required placeholder="Reward name" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-xl px-4 py-3 text-white outline-none" style={{ background: '#05050f', border: '1px solid #1e1e3f' }} />
+          <input placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-xl px-4 py-3 text-white outline-none" style={{ background: '#05050f', border: '1px solid #1e1e3f' }} />
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium" style={{ color: '#aaa' }}>Points cost:</label>
-            <input type="number" min={1} max={9999} value={cost} onChange={(e) => setCost(Number(e.target.value))} className="w-24 rounded-xl px-3 py-2 text-white outline-none text-center" style={{ background: '#1a1a2e', border: '1px solid #2a2a5a' }} />
+            <label className="text-sm font-medium" style={{ color: '#8e8ea0' }}>Credit cost:</label>
+            <input type="number" min={1} max={9999} value={cost} onChange={(e) => setCost(Number(e.target.value))} className="w-24 rounded-xl px-3 py-2 text-white outline-none text-center" style={{ background: '#05050f', border: '1px solid #1e1e3f' }} />
           </div>
           <div className="flex gap-3">
-            <button type="submit" disabled={saving} className="px-6 py-2 rounded-xl font-bold disabled:opacity-60" style={{ backgroundColor: '#FFD700', color: '#1a1a2e' }}>{saving ? 'Saving…' : 'Create Reward'}</button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 rounded-xl font-bold border" style={{ borderColor: '#2a2a5a', color: '#aaa' }}>Cancel</button>
+            <button type="submit" disabled={saving} className="px-6 py-2 rounded-xl font-bold disabled:opacity-60" style={{ backgroundColor: '#00e5ff', color: '#05050f' }}>{saving ? 'Transmitting…' : 'Add Reward'}</button>
+            <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 rounded-xl font-bold border" style={{ borderColor: '#1e1e3f', color: '#8e8ea0' }}>Cancel</button>
           </div>
         </form>
       )}
 
       {rewards.length === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
-          <span className="text-6xl mb-4">🎀</span>
+          <span className="text-6xl mb-4">💫</span>
           <p className="text-xl font-bold text-white mb-2">No rewards yet</p>
-          {profile.role === 'parent' && <p style={{ color: '#888' }}>Add rewards for your heroes to spend points on.</p>}
+          {profile.role === 'parent' && <p style={{ color: '#6b6b8a' }}>Add rewards for your cadets to spend credits on.</p>}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rewards.map((reward) => {
             const canAfford = profile.points >= reward.points_cost;
             return (
-              <div key={reward.id} className="rounded-2xl p-5 border flex flex-col" style={{ background: '#16213e', borderColor: '#2a2a5a', opacity: !canAfford && profile.role === 'child' ? 0.6 : 1 }}>
+              <div key={reward.id} className="rounded-2xl p-5 border flex flex-col" style={{ background: '#0d0d1f', borderColor: '#1e1e3f', opacity: !canAfford && profile.role === 'child' ? 0.6 : 1 }}>
                 <h3 className="font-bold text-white text-lg mb-1">{reward.title}</h3>
-                {reward.description && <p className="text-sm mb-3 flex-1" style={{ color: '#888' }}>{reward.description}</p>}
+                {reward.description && <p className="text-sm mb-3 flex-1" style={{ color: '#6b6b8a' }}>{reward.description}</p>}
                 <div className="flex items-center justify-between mt-auto">
-                  <span className="font-bold text-lg" style={{ color: canAfford ? '#FFD700' : '#888' }}>⭐ {reward.points_cost}</span>
+                  <span className="font-bold text-lg" style={{ color: canAfford ? '#00e5ff' : '#555570' }}>⭐ {reward.points_cost} cr</span>
                   {profile.role === 'child' && (
                     <button
                       onClick={() => redeemReward(reward)}
                       disabled={!canAfford || redeeming === reward.id}
                       className="px-3 py-1.5 rounded-lg text-sm font-bold disabled:opacity-50"
-                      style={{ backgroundColor: canAfford ? '#FFD700' : '#333', color: canAfford ? '#1a1a2e' : '#666' }}
+                      style={{ backgroundColor: canAfford ? '#00e5ff' : '#1e1e3f', color: canAfford ? '#05050f' : '#555570' }}
                     >
                       {redeeming === reward.id ? '…' : canAfford ? 'Redeem' : '🔒'}
                     </button>

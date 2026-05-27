@@ -3,7 +3,7 @@ import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 
-function ProgressBar({ value, max }: { value: number; max: number }) {
+function XPBar({ value, max }: { value: number; max: number }) {
   const pct = Math.min(value / max, 1);
   return (
     <View style={pb.track}>
@@ -13,33 +13,32 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 }
 
 const pb = StyleSheet.create({
-  track: { height: 8, backgroundColor: '#2a2a5a', borderRadius: 4, overflow: 'hidden' },
-  fill: { height: 8, backgroundColor: '#FFD700', borderRadius: 4 },
+  track: { height: 8, backgroundColor: '#1e1e3f', borderRadius: 4, overflow: 'hidden' },
+  fill: { height: 8, backgroundColor: '#00e5ff', borderRadius: 4 },
 });
 
 export default function ProfileScreen() {
   const { profile, signOut, refreshProfile } = useAuth();
-  const [householdName, setHouseholdName] = useState('');
+  const [crewName, setCrewName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  const pointsForNextLevel = profile ? profile.level * 100 : 100;
-  const currentLevelPoints = profile ? profile.points % 100 : 0;
+  const levelPoints = profile ? profile.points % 100 : 0;
 
   async function createHousehold() {
-    if (!householdName.trim() || !profile) return;
+    if (!crewName.trim() || !profile) return;
     setCreating(true);
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     const { data, error } = await supabase
       .from('households')
-      .insert({ name: householdName.trim(), invite_code: code, created_by: profile.id })
+      .insert({ name: crewName.trim(), invite_code: code, created_by: profile.id })
       .select()
       .single();
     if (error) { Alert.alert('Error', error.message); setCreating(false); return; }
     await supabase.from('profiles').update({ household_id: data.id }).eq('id', profile.id);
     await refreshProfile();
-    Alert.alert('Household Created!', `Invite code: ${code}\nShare this with your family.`);
+    Alert.alert('Crew Established!', `Access code: ${code}\nShare this with your crew.`);
     setCreating(false);
   }
 
@@ -52,13 +51,13 @@ export default function ProfileScreen() {
       .eq('invite_code', inviteCode.trim().toUpperCase())
       .single();
     if (error || !data) {
-      Alert.alert('Invalid Code', 'No household found with that invite code.');
+      Alert.alert('Invalid Code', 'No crew found with that access code.');
       setJoining(false);
       return;
     }
     await supabase.from('profiles').update({ household_id: data.id }).eq('id', profile.id);
     await refreshProfile();
-    Alert.alert('Joined!', 'Welcome to the household!');
+    Alert.alert('Crew Joined!', 'Welcome aboard, Agent.');
     setJoining(false);
   }
 
@@ -67,24 +66,24 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.heroCard}>
-          <Text style={styles.avatar}>{profile.role === 'parent' ? '👑' : '⚡'}</Text>
-          <Text style={styles.username}>{profile.username ?? 'Hero'}</Text>
-          <Text style={styles.roleText}>{profile.role === 'parent' ? 'Parent · Quest Master' : 'Child · Hero'}</Text>
+        <View style={styles.agentCard}>
+          <Text style={styles.avatar}>{profile.role === 'parent' ? '👩‍✈️' : '🤖'}</Text>
+          <Text style={styles.username}>{profile.username ?? 'Agent'}</Text>
+          <Text style={styles.roleText}>{profile.role === 'parent' ? 'Commander · Mission Control' : 'Cadet · Field Agent'}</Text>
 
           <View style={styles.levelRow}>
             <Text style={styles.levelText}>Level {profile.level}</Text>
-            <Text style={styles.levelNext}>{currentLevelPoints} / 100 xp</Text>
+            <Text style={styles.levelNext}>{levelPoints} / 100 xp</Text>
           </View>
-          <ProgressBar value={currentLevelPoints} max={100} />
+          <XPBar value={levelPoints} max={100} />
 
           <View style={styles.statsRow}>
             <View style={styles.stat}>
               <Text style={styles.statValue}>⭐ {profile.points}</Text>
-              <Text style={styles.statLabel}>Total Points</Text>
+              <Text style={styles.statLabel}>Credits</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>🗡️ {profile.level}</Text>
+              <Text style={[styles.statValue, { color: '#bf5af2' }]}>⚡ {profile.level}</Text>
               <Text style={styles.statLabel}>Level</Text>
             </View>
           </View>
@@ -92,48 +91,48 @@ export default function ProfileScreen() {
 
         {!profile.household_id ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Join or Create a Household</Text>
+            <Text style={styles.sectionTitle}>Crew</Text>
 
             {profile.role === 'parent' && (
-              <View style={styles.householdBlock}>
-                <Text style={styles.blockLabel}>Create Household</Text>
+              <View style={styles.block}>
+                <Text style={styles.blockLabel}>Establish a crew</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Household name"
-                  placeholderTextColor="#888"
-                  value={householdName}
-                  onChangeText={setHouseholdName}
+                  placeholder="Crew name"
+                  placeholderTextColor="#555570"
+                  value={crewName}
+                  onChangeText={setCrewName}
                 />
                 <Pressable style={[styles.btn, creating && styles.btnDisabled]} onPress={createHousehold} disabled={creating}>
-                  <Text style={styles.btnText}>{creating ? 'Creating...' : 'Create'}</Text>
+                  <Text style={styles.btnText}>{creating ? 'Establishing…' : 'Establish Crew'}</Text>
                 </Pressable>
               </View>
             )}
 
-            <View style={styles.householdBlock}>
-              <Text style={styles.blockLabel}>Join with Invite Code</Text>
+            <View style={styles.block}>
+              <Text style={styles.blockLabel}>Join with access code</Text>
               <TextInput
-                style={styles.input}
-                placeholder="6-digit code"
-                placeholderTextColor="#888"
+                style={[styles.input, { textAlign: 'center', letterSpacing: 4, fontFamily: 'monospace' }]}
+                placeholder="6-character code"
+                placeholderTextColor="#555570"
                 value={inviteCode}
                 onChangeText={setInviteCode}
                 autoCapitalize="characters"
               />
-              <Pressable style={[styles.btn, { backgroundColor: '#4FC3F7' }, joining && styles.btnDisabled]} onPress={joinHousehold} disabled={joining}>
-                <Text style={[styles.btnText, { color: '#1a1a2e' }]}>{joining ? 'Joining...' : 'Join'}</Text>
+              <Pressable style={[styles.btn, { backgroundColor: '#bf5af2' }, joining && styles.btnDisabled]} onPress={joinHousehold} disabled={joining}>
+                <Text style={styles.btnText}>{joining ? 'Connecting…' : 'Join Crew'}</Text>
               </Pressable>
             </View>
           </View>
         ) : (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Household</Text>
-            <Text style={styles.householdJoined}>✅ You're part of a household</Text>
+            <Text style={styles.sectionTitle}>Crew</Text>
+            <Text style={styles.crewJoined}>🛸 You're part of a crew</Text>
           </View>
         )}
 
         <Pressable style={styles.signOutBtn} onPress={signOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>Disconnect</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -141,63 +140,63 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e' },
+  container: { flex: 1, backgroundColor: '#05050f' },
   scroll: { padding: 20, gap: 20 },
-  heroCard: {
-    backgroundColor: '#16213e',
+  agentCard: {
+    backgroundColor: '#0d0d1f',
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FFD700',
+    borderColor: '#00e5ff',
   },
   avatar: { fontSize: 64, marginBottom: 8 },
   username: { color: '#fff', fontWeight: '800', fontSize: 24 },
-  roleText: { color: '#888', fontSize: 13, marginBottom: 16 },
+  roleText: { color: '#6b6b8a', fontSize: 13, marginBottom: 16 },
   levelRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 6 },
-  levelText: { color: '#FFD700', fontWeight: '700', fontSize: 14 },
-  levelNext: { color: '#888', fontSize: 13 },
+  levelText: { color: '#00e5ff', fontWeight: '700', fontSize: 14 },
+  levelNext: { color: '#6b6b8a', fontSize: 13 },
   statsRow: { flexDirection: 'row', gap: 32, marginTop: 20 },
   stat: { alignItems: 'center' },
   statValue: { color: '#fff', fontWeight: '800', fontSize: 20 },
-  statLabel: { color: '#888', fontSize: 12, marginTop: 2 },
+  statLabel: { color: '#6b6b8a', fontSize: 12, marginTop: 2 },
   section: { gap: 12 },
-  sectionTitle: { color: '#FFD700', fontWeight: '700', fontSize: 16 },
-  householdBlock: {
-    backgroundColor: '#16213e',
+  sectionTitle: { color: '#00e5ff', fontWeight: '700', fontSize: 16 },
+  block: {
+    backgroundColor: '#0d0d1f',
     borderRadius: 16,
     padding: 16,
     gap: 10,
     borderWidth: 1,
-    borderColor: '#2a2a5a',
+    borderColor: '#1e1e3f',
   },
-  blockLabel: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  blockLabel: { color: '#8e8ea0', fontWeight: '600', fontSize: 14 },
   input: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#05050f',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     color: '#fff',
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#2a2a5a',
+    borderColor: '#1e1e3f',
   },
   btn: {
-    backgroundColor: '#FFD700',
+    backgroundColor: '#00e5ff',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
   },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#1a1a2e', fontWeight: '700', fontSize: 15 },
-  householdJoined: { color: '#81C784', fontSize: 15, fontWeight: '600' },
+  btnText: { color: '#05050f', fontWeight: '700', fontSize: 15 },
+  crewJoined: { color: '#30d158', fontSize: 15, fontWeight: '600' },
   signOutBtn: {
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ff4444',
+    borderColor: '#ff453a',
     marginTop: 8,
   },
-  signOutText: { color: '#ff4444', fontWeight: '700', fontSize: 15 },
+  signOutText: { color: '#ff453a', fontWeight: '700', fontSize: 15 },
 });

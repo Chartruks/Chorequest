@@ -27,21 +27,15 @@ export default function SignUp() {
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      Alert.alert('Sign Up Failed', error.message);
+      Alert.alert('Enlistment Failed', error.message);
       setLoading(false);
       return;
     }
     if (data.user) {
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        username,
-        role,
-        points: 0,
-        level: 1,
-      });
+      await supabase.from('profiles').update({ username, role }).eq('id', data.user.id);
     }
     setLoading(false);
-    Alert.alert('Almost there!', 'Check your email to confirm your account.');
+    Alert.alert('Transmission Sent!', 'Check your email to confirm your agent profile.');
   }
 
   return (
@@ -50,14 +44,14 @@ export default function SignUp() {
       style={styles.container}
     >
       <View style={styles.inner}>
-        <Text style={styles.logo}>⚔️</Text>
-        <Text style={styles.title}>Join ChoreQuest</Text>
-        <Text style={styles.subtitle}>Create your hero account</Text>
+        <Text style={styles.logo}>🚀</Text>
+        <Text style={styles.title}>Enlist in ChoreQuest</Text>
+        <Text style={styles.subtitle}>Create your agent profile</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Username"
-          placeholderTextColor="#888"
+          placeholder="Call sign"
+          placeholderTextColor="#555570"
           value={username}
           onChangeText={setUsername}
           autoCapitalize="none"
@@ -65,7 +59,7 @@ export default function SignUp() {
         <TextInput
           style={styles.input}
           placeholder="Email"
-          placeholderTextColor="#888"
+          placeholderTextColor="#555570"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -74,13 +68,13 @@ export default function SignUp() {
         <TextInput
           style={styles.input}
           placeholder="Password"
-          placeholderTextColor="#888"
+          placeholderTextColor="#555570"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
         />
 
-        <Text style={styles.roleLabel}>I am a...</Text>
+        <Text style={styles.roleLabel}>My rank is…</Text>
         <View style={styles.roleRow}>
           {(['parent', 'child'] as const).map((r) => (
             <Pressable
@@ -88,21 +82,21 @@ export default function SignUp() {
               style={[styles.roleButton, role === r && styles.roleButtonActive]}
               onPress={() => setRole(r)}
             >
-              <Text style={styles.roleEmoji}>{r === 'parent' ? '👑' : '⚡'}</Text>
+              <Text style={styles.roleEmoji}>{r === 'parent' ? '👩‍✈️' : '🤖'}</Text>
               <Text style={[styles.roleText, role === r && styles.roleTextActive]}>
-                {r === 'parent' ? 'Parent' : 'Child'}
+                {r === 'parent' ? 'Commander' : 'Cadet'}
               </Text>
             </Pressable>
           ))}
         </View>
 
         <Pressable style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSignUp} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Start Quest'}</Text>
+          <Text style={styles.buttonText}>{loading ? 'Enlisting…' : 'Begin Mission'}</Text>
         </Pressable>
 
         <Link href="/(auth)/sign-in" asChild>
           <Pressable style={styles.link}>
-            <Text style={styles.linkText}>Already have an account? <Text style={styles.linkAccent}>Sign In</Text></Text>
+            <Text style={styles.linkText}>Already enlisted? <Text style={styles.linkAccent}>Sign In</Text></Text>
           </Pressable>
         </Link>
       </View>
@@ -111,13 +105,13 @@ export default function SignUp() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e' },
+  container: { flex: 1, backgroundColor: '#05050f' },
   inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
   logo: { fontSize: 64, textAlign: 'center', marginBottom: 8 },
-  title: { fontSize: 32, fontWeight: '800', color: '#FFD700', textAlign: 'center', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#aaa', textAlign: 'center', marginBottom: 32 },
+  title: { fontSize: 28, fontWeight: '800', color: '#00e5ff', textAlign: 'center', marginBottom: 4 },
+  subtitle: { fontSize: 14, color: '#6b6b8a', textAlign: 'center', marginBottom: 32 },
   input: {
-    backgroundColor: '#16213e',
+    backgroundColor: '#0d0d1f',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -125,32 +119,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#2a2a5a',
+    borderColor: '#1e1e3f',
   },
-  roleLabel: { color: '#aaa', fontSize: 14, marginBottom: 8, marginTop: 4 },
+  roleLabel: { color: '#8e8ea0', fontSize: 14, marginBottom: 8, marginTop: 4 },
   roleRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   roleButton: {
     flex: 1,
-    backgroundColor: '#16213e',
+    backgroundColor: '#0d0d1f',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2a2a5a',
+    borderColor: '#1e1e3f',
   },
-  roleButtonActive: { borderColor: '#FFD700', backgroundColor: '#2a2410' },
+  roleButtonActive: { borderColor: '#00e5ff', backgroundColor: '#001a1f' },
   roleEmoji: { fontSize: 28, marginBottom: 4 },
-  roleText: { color: '#aaa', fontWeight: '600' },
-  roleTextActive: { color: '#FFD700' },
+  roleText: { color: '#8e8ea0', fontWeight: '600' },
+  roleTextActive: { color: '#00e5ff' },
   button: {
-    backgroundColor: '#FFD700',
+    backgroundColor: '#00e5ff',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#1a1a2e', fontWeight: '700', fontSize: 16 },
+  buttonText: { color: '#05050f', fontWeight: '700', fontSize: 16 },
   link: { marginTop: 24, alignItems: 'center' },
-  linkText: { color: '#aaa', fontSize: 14 },
-  linkAccent: { color: '#FFD700', fontWeight: '600' },
+  linkText: { color: '#6b6b8a', fontSize: 14 },
+  linkAccent: { color: '#00e5ff', fontWeight: '600' },
 });

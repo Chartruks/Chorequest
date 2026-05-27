@@ -25,10 +25,10 @@ export default function RewardsScreen() {
   async function redeemReward(reward: Reward) {
     if (!profile) return;
     if (profile.points < reward.points_cost) {
-      Alert.alert('Not enough points', `You need ${reward.points_cost - profile.points} more points.`);
+      Alert.alert('Insufficient Credits', `You need ${reward.points_cost - profile.points} more credits.`);
       return;
     }
-    Alert.alert('Redeem Reward', `Spend ${reward.points_cost} points on "${reward.title}"?`, [
+    Alert.alert('Redeem Reward', `Spend ${reward.points_cost} credits on "${reward.title}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Redeem',
@@ -38,7 +38,7 @@ export default function RewardsScreen() {
             .update({ points: profile.points - reward.points_cost })
             .eq('id', profile.id);
           await refreshProfile();
-          Alert.alert('🎉 Redeemed!', `You got "${reward.title}"! Show this to a parent.`);
+          Alert.alert('🎉 Unlocked!', `You got "${reward.title}"! Show this to your Commander.`);
         },
       },
     ]);
@@ -50,11 +50,11 @@ export default function RewardsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🎁 Rewards</Text>
-        <Text style={styles.headerSub}>You have ⭐ {profile?.points ?? 0} points</Text>
+        <Text style={styles.headerSub}>Balance: ⭐ {profile?.points ?? 0} credits</Text>
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#FFD700" style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#00e5ff" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={rewards}
@@ -62,9 +62,9 @@ export default function RewardsScreen() {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🎀</Text>
+              <Text style={styles.emptyEmoji}>💫</Text>
               <Text style={styles.emptyTitle}>No rewards yet</Text>
-              <Text style={styles.emptyText}>A parent can add rewards for the household.</Text>
+              <Text style={styles.emptyText}>A Commander can add rewards from the web app.</Text>
             </View>
           }
           renderItem={({ item }) => {
@@ -97,32 +97,32 @@ export default function RewardsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e' },
+  container: { flex: 1, backgroundColor: '#05050f' },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#FFD700' },
-  headerSub: { fontSize: 13, color: '#FFD700', marginTop: 2 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#00e5ff' },
+  headerSub: { fontSize: 13, color: '#00e5ff', marginTop: 2 },
   list: { padding: 16, gap: 12 },
   card: {
-    backgroundColor: '#16213e',
+    backgroundColor: '#0d0d1f',
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2a2a5a',
+    borderColor: '#1e1e3f',
   },
-  cardLocked: { opacity: 0.6 },
+  cardLocked: { opacity: 0.5 },
   cardContent: { flex: 1 },
   cardTitle: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  cardDesc: { color: '#aaa', fontSize: 13, marginTop: 4 },
+  cardDesc: { color: '#6b6b8a', fontSize: 13, marginTop: 4 },
   cardRight: { alignItems: 'flex-end', marginLeft: 12 },
-  cost: { color: '#FFD700', fontWeight: '700', fontSize: 15, marginBottom: 8 },
-  costLocked: { color: '#888' },
-  redeemBtn: { backgroundColor: '#FFD700', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  redeemBtnDisabled: { backgroundColor: '#333' },
-  redeemBtnText: { color: '#1a1a2e', fontWeight: '700', fontSize: 13 },
+  cost: { color: '#00e5ff', fontWeight: '700', fontSize: 15, marginBottom: 8 },
+  costLocked: { color: '#555570' },
+  redeemBtn: { backgroundColor: '#00e5ff', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  redeemBtnDisabled: { backgroundColor: '#1e1e3f' },
+  redeemBtnText: { color: '#05050f', fontWeight: '700', fontSize: 13 },
   empty: { alignItems: 'center', paddingTop: 60 },
   emptyEmoji: { fontSize: 56, marginBottom: 12 },
   emptyTitle: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 6 },
-  emptyText: { color: '#888', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
+  emptyText: { color: '#6b6b8a', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
 });

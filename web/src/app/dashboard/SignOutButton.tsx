@@ -15,9 +15,9 @@ export default function SignOutButton() {
     <button
       onClick={handleSignOut}
       className="text-sm px-3 py-1 rounded-lg border transition-colors hover:border-red-500 hover:text-red-400"
-      style={{ borderColor: '#2a2a5a', color: '#666' }}
+      style={{ borderColor: '#1e1e3f', color: '#555570' }}
     >
-      Sign out
+      Disconnect
     </button>
   );
 }
