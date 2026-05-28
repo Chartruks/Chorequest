@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
@@ -235,6 +236,16 @@ export default function GalaxyScreen() {
         <Text style={styles.headerSub}>{discovered.filter(d => d.status === 'discovered').length} sectors charted</Text>
       </View>
 
+      {/* Patrol Run entry */}
+      <Pressable style={styles.patrolBanner} onPress={() => router.push('/game')}>
+        <Text style={styles.patrolEmoji}>🎮</Text>
+        <View style={styles.patrolBody}>
+          <Text style={styles.patrolTitle}>Patrol Run</Text>
+          <Text style={styles.patrolSub}>Dodge asteroids · Collect resources</Text>
+        </View>
+        <Text style={styles.patrolArrow}>›</Text>
+      </Pressable>
+
       {loading ? (
         <ActivityIndicator color="#00e5ff" style={{ marginTop: 40 }} />
       ) : (
@@ -323,6 +334,23 @@ const styles = StyleSheet.create({
   launchBtn: { backgroundColor: '#00e5ff', borderRadius: 10, width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   launchBtnText: { fontSize: 18 },
   doneCheck: { color: '#30d158', fontSize: 22, fontWeight: '900' },
+  patrolBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d0d1f',
+    borderWidth: 1,
+    borderColor: '#00e5ff44',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+  },
+  patrolEmoji: { fontSize: 28 },
+  patrolBody: { flex: 1 },
+  patrolTitle: { color: '#00e5ff', fontWeight: '800', fontSize: 15 },
+  patrolSub: { color: '#6b6b8a', fontSize: 12, marginTop: 2 },
+  patrolArrow: { color: '#00e5ff', fontSize: 22, fontWeight: '300' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyEmoji: { fontSize: 56, marginBottom: 12 },
   emptyTitle: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 6 },
