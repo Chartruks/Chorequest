@@ -18,7 +18,7 @@ export default function TabsLayout() {
         },
         tabBarActiveTintColor: '#00e5ff',
         tabBarInactiveTintColor: '#555570',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
       }}
     >
       <Tabs.Screen
@@ -26,6 +26,27 @@ export default function TabsLayout() {
         options={{
           title: 'Missions',
           tabBarIcon: ({ focused }) => <TabIcon emoji="🚀" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="station"
+        options={{
+          title: 'Station',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏗️" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="galaxy"
+        options={{
+          title: 'Galaxy',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🌌" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="story"
+        options={{
+          title: 'Chronicle',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📖" focused={focused} />,
         }}
       />
       <Tabs.Screen

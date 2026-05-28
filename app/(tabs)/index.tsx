@@ -9,6 +9,8 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { applyMoraleMultiplier } from '../../lib/idleEngine';
+import { applySpecToResourceReward } from '../../lib/specializations';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 
@@ -28,8 +30,16 @@ const STATUS_LABELS: Record<Chore['status'], string> = {
   approved: 'Authorized ★',
 };
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  maintenance: '⚙️',
+  learning: '📚',
+  cleanliness: '🧹',
+  family: '👨‍👩‍👧',
+  special: '⭐',
+};
+
 export default function MissionsScreen() {
-  const { profile } = useAuth();
+  const { profile, gameState, refreshGameState } = useAuth();
   const [chores, setChores] = useState<Chore[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,12 +66,38 @@ export default function MissionsScreen() {
 
   async function approveChore(chore: Chore) {
     await supabase.from('chores').update({ status: 'approved' }).eq('id', chore.id);
+
+    const morale = gameState?.morale ?? 75;
+
     if (chore.assigned_to) {
-      const { data: p } = await supabase.from('profiles').select('points, level').eq('id', chore.assigned_to).single();
+      // Fetch assignee's spec for resource bonus
+      const [{ data: p }, { data: spec }] = await Promise.all([
+        supabase.from('profiles').select('points, level').eq('id', chore.assigned_to).single(),
+        supabase.from('crew_specializations').select('spec').eq('profile_id', chore.assigned_to).single(),
+      ]);
       if (p) {
-        const newPoints = p.points + chore.points_reward;
+        const rawPoints = applyMoraleMultiplier(chore.points_reward, morale);
+        const newPoints = p.points + rawPoints;
         const newLevel = Math.floor(newPoints / 100) + 1;
         await supabase.from('profiles').update({ points: newPoints, level: newLevel }).eq('id', chore.assigned_to);
+      }
+
+      // Apply resource rewards to game_state
+      if (profile?.household_id && gameState) {
+        const rawResources = applySpecToResourceReward((spec?.spec ?? null) as any, chore.category, {
+          energy:    chore.energy_reward,
+          research:  chore.research_reward,
+          materials: chore.materials_reward,
+          morale:    chore.morale_reward,
+        });
+        const moraleGain = applyMoraleMultiplier(rawResources.morale, morale);
+        await supabase.from('game_state').update({
+          energy:    gameState.energy    + applyMoraleMultiplier(rawResources.energy,    morale),
+          research:  gameState.research  + applyMoraleMultiplier(rawResources.research,  morale),
+          materials: gameState.materials + applyMoraleMultiplier(rawResources.materials, morale),
+          morale:    Math.min(100, gameState.morale + moraleGain),
+        }).eq('household_id', profile.household_id);
+        await refreshGameState();
       }
     }
     fetchChores();
@@ -102,9 +138,17 @@ export default function MissionsScreen() {
               <Text style={styles.emptyText}>A Commander can deploy missions from the web app.</Text>
             </View>
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const resourceLine = [
+              item.energy_reward    > 0 && `⚡+${item.energy_reward}`,
+              item.research_reward  > 0 && `🔬+${item.research_reward}`,
+              item.materials_reward > 0 && `🪨+${item.materials_reward}`,
+              item.morale_reward    > 0 && `💜+${item.morale_reward}`,
+            ].filter(Boolean).join('  ');
+            return (
             <View style={styles.card}>
               <View style={styles.cardTop}>
+                <Text style={styles.cardCategory}>{CATEGORY_EMOJI[item.category] ?? '📋'}</Text>
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <View style={[styles.badge, { backgroundColor: STATUS_COLORS[item.status] + '22' }]}>
                   <Text style={[styles.badgeText, { color: STATUS_COLORS[item.status] }]}>
@@ -114,7 +158,10 @@ export default function MissionsScreen() {
               </View>
               {item.description ? <Text style={styles.cardDesc}>{item.description}</Text> : null}
               <View style={styles.cardBottom}>
-                <Text style={styles.points}>⭐ {item.points_reward} cr</Text>
+                <View>
+                  <Text style={styles.points}>⭐ {item.points_reward} cr</Text>
+                  {resourceLine ? <Text style={styles.resources}>{resourceLine}</Text> : null}
+                </View>
                 {item.status === 'pending' && profile.role === 'child' && (
                   <Pressable style={styles.actionBtn} onPress={() => claimChore(item.id)}>
                     <Text style={styles.actionBtnText}>Accept</Text>
@@ -132,7 +179,8 @@ export default function MissionsScreen() {
                 )}
               </View>
             </View>
-          )}
+            );
+          }}
         />
       )}
     </SafeAreaView>
@@ -152,13 +200,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1e1e3f',
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  cardTitle: { color: '#fff', fontWeight: '700', fontSize: 16, flex: 1, marginRight: 8 },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, gap: 6 },
+  cardCategory: { fontSize: 16, marginTop: 1 },
+  cardTitle: { color: '#fff', fontWeight: '700', fontSize: 16, flex: 1 },
   badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   cardDesc: { color: '#6b6b8a', fontSize: 13, marginBottom: 10 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
   points: { color: '#00e5ff', fontWeight: '700', fontSize: 14 },
+  resources: { color: '#6b6b8a', fontSize: 11, marginTop: 2 },
   actionBtn: {
     backgroundColor: '#00e5ff',
     borderRadius: 8,

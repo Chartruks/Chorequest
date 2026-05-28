@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { CADET_SPECS, COMMANDER_SPECS, Spec, SPEC_INFO } from '../../lib/specializations';
 import { supabase } from '../../lib/supabase';
 
 function XPBar({ value, max }: { value: number; max: number }) {
@@ -23,6 +24,27 @@ export default function ProfileScreen() {
   const [inviteCode, setInviteCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [mySpec, setMySpec] = useState<string | null>(null);
+  const [choosingSpec, setChoosingSpec] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    supabase.from('crew_specializations').select('spec').eq('profile_id', profile.id).single()
+      .then(({ data }) => setMySpec(data?.spec ?? null));
+  }, [profile?.id]);
+
+  async function chooseSpec(spec: Spec) {
+    if (!profile) return;
+    setChoosingSpec(true);
+    if (mySpec) {
+      await supabase.from('crew_specializations').update({ spec }).eq('profile_id', profile.id);
+    } else {
+      await supabase.from('crew_specializations').insert({ profile_id: profile.id, spec });
+    }
+    setMySpec(spec);
+    setChoosingSpec(false);
+    Alert.alert('Spec Assigned', `You are now a ${SPEC_INFO[spec].name}.`);
+  }
 
   const levelPoints = profile ? profile.points % 100 : 0;
 
@@ -87,7 +109,52 @@ export default function ProfileScreen() {
               <Text style={styles.statLabel}>Level</Text>
             </View>
           </View>
+
+          {mySpec && (
+            <View style={styles.specBadge}>
+              <Text style={styles.specBadgeText}>{SPEC_INFO[mySpec as Spec].emoji} {SPEC_INFO[mySpec as Spec].name}</Text>
+            </View>
+          )}
         </View>
+
+        {/* Spec picker — available at Level 3 */}
+        {profile.level >= 3 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Specialization</Text>
+            <View style={styles.block}>
+              <Text style={styles.blockLabel}>{mySpec ? 'Change spec' : 'Choose your role'}</Text>
+              {(profile.role === 'child' ? CADET_SPECS : COMMANDER_SPECS).map(spec => {
+                const info = SPEC_INFO[spec];
+                const isActive = mySpec === spec;
+                return (
+                  <Pressable
+                    key={spec}
+                    style={[styles.specOption, isActive && styles.specOptionActive]}
+                    onPress={() => {
+                      if (isActive) return;
+                      Alert.alert(
+                        `${info.emoji} ${info.name}`,
+                        info.description,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Choose', onPress: () => chooseSpec(spec) },
+                        ]
+                      );
+                    }}
+                    disabled={choosingSpec}
+                  >
+                    <Text style={styles.specEmoji}>{info.emoji}</Text>
+                    <View style={styles.specBody}>
+                      <Text style={[styles.specName, isActive && styles.specNameActive]}>{info.name}</Text>
+                      <Text style={styles.specDesc}>{info.description}</Text>
+                    </View>
+                    {isActive && <Text style={styles.specCheck}>✓</Text>}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {!profile.household_id ? (
           <View style={styles.section}>
@@ -190,6 +257,25 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#05050f', fontWeight: '700', fontSize: 15 },
   crewJoined: { color: '#30d158', fontSize: 15, fontWeight: '600' },
+  specBadge: { marginTop: 12, backgroundColor: '#bf5af222', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6 },
+  specBadgeText: { color: '#bf5af2', fontWeight: '700', fontSize: 13 },
+  specOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#05050f',
+    borderRadius: 10,
+    padding: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#1e1e3f',
+  },
+  specOptionActive: { borderColor: '#bf5af2' },
+  specEmoji: { fontSize: 22, width: 28, textAlign: 'center' },
+  specBody: { flex: 1 },
+  specName: { color: '#8e8ea0', fontWeight: '700', fontSize: 14 },
+  specNameActive: { color: '#bf5af2' },
+  specDesc: { color: '#555570', fontSize: 12, marginTop: 2 },
+  specCheck: { color: '#bf5af2', fontWeight: '900', fontSize: 16 },
   signOutBtn: {
     borderRadius: 12,
     paddingVertical: 14,
