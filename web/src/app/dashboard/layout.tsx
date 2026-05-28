@@ -5,6 +5,9 @@ import SignOutButton from './SignOutButton';
 
 const NAV = [
   { href: '/dashboard/quests', emoji: '🚀', label: 'Missions' },
+  { href: '/dashboard/station', emoji: '🏗️', label: 'Station' },
+  { href: '/dashboard/galaxy', emoji: '🌌', label: 'Galaxy' },
+  { href: '/dashboard/story', emoji: '📖', label: 'Chronicle' },
   { href: '/dashboard/leaderboard', emoji: '🏆', label: 'Ranks' },
   { href: '/dashboard/rewards', emoji: '🎁', label: 'Rewards' },
   { href: '/dashboard/profile', emoji: '🧑‍🚀', label: 'Agent' },
