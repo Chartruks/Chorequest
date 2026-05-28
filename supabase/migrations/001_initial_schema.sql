@@ -66,10 +66,18 @@ alter table households enable row level security;
 alter table chores enable row level security;
 alter table rewards enable row level security;
 
+-- Security-definer helper to avoid infinite recursion in household read policy
+create or replace function public.get_my_household_id()
+returns uuid language sql security definer stable
+set search_path = public
+as $$
+  select household_id from profiles where id = auth.uid()
+$$;
+
 -- Profiles: users can read/update their own + household members
 create policy "profiles: own read" on profiles for select using (auth.uid() = id);
 create policy "profiles: household read" on profiles for select
-  using (household_id in (select household_id from profiles where id = auth.uid()));
+  using (household_id is not null and household_id = get_my_household_id());
 create policy "profiles: own update" on profiles for update using (auth.uid() = id);
 
 -- Households: members can read, creators can manage
