@@ -83,6 +83,8 @@ create policy "profiles: own update" on profiles for update using (auth.uid() = 
 -- Households: members can read, creators can manage
 create policy "households: member read" on households for select
   using (id in (select household_id from profiles where id = auth.uid()));
+create policy "households: creator select" on households for select
+  using (created_by = auth.uid());
 create policy "households: creator insert" on households for insert with check (created_by = auth.uid());
 create policy "households: creator update" on households for update using (created_by = auth.uid());
 
