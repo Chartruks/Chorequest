@@ -150,7 +150,7 @@ export default function QuestsClient({ profile, initialChores, templates }: Prop
       }
     }
 
-    await supabase.from('profiles').update(updates).eq('id', chore.assigned_to);
+    await supabase.from('profiles').update(updates as any).eq('id', chore.assigned_to);
     await refresh();
     router.refresh();
   }
