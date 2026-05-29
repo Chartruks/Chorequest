@@ -27,7 +27,6 @@ export default function StoryScreen() {
 
   useEffect(() => { load(); }, [profile?.household_id]);
 
-  // Auto-show first unread event on mount
   useEffect(() => {
     if (!loading && events.length > 0 && profile) {
       const unread = events.find(e => isEventUnread(e, profile.id));
@@ -40,7 +39,9 @@ export default function StoryScreen() {
     await supabase.from('story_events').update({
       read_by: [...event.read_by, profile.id],
     }).eq('id', event.id);
-    setEvents(prev => prev.map(e => e.id === event.id ? { ...e, read_by: [...e.read_by, profile.id] } : e));
+    setEvents(prev => prev.map(e =>
+      e.id === event.id ? { ...e, read_by: [...e.read_by, profile.id] } : e
+    ));
     setModalEvent(null);
   }
 
@@ -52,7 +53,7 @@ export default function StoryScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>📖</Text>
           <Text style={styles.emptyTitle}>No Story Yet</Text>
-          <Text style={styles.emptyText}>Create or join a crew to begin the chronicle.</Text>
+          <Text style={styles.emptyText}>Create or join a settlement to begin the chronicle.</Text>
         </View>
       </SafeAreaView>
     );
@@ -61,11 +62,10 @@ export default function StoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📖 Chronicle</Text>
+        <Text style={styles.headerTitle}>📖 Story</Text>
         <Text style={styles.headerSub}>Chapter {currentChapter}: {CHAPTER_TITLES[currentChapter] ?? 'Unknown'}</Text>
       </View>
 
-      {/* Chapter progress */}
       <View style={styles.chapters}>
         {[1, 2, 3, 4, 5].map(ch => {
           const unlocked = ch <= currentChapter;
@@ -78,12 +78,12 @@ export default function StoryScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#00e5ff" style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#d4791c" style={{ marginTop: 40 }} />
       ) : events.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyEmoji}>📡</Text>
+          <Text style={styles.emptyEmoji}>🔦</Text>
           <Text style={styles.emptyTitle}>Your story has not begun</Text>
-          <Text style={styles.emptyText}>Complete missions and explore the galaxy to trigger story events.</Text>
+          <Text style={styles.emptyText}>Complete chores and scout the wasteland to trigger story events.</Text>
         </View>
       ) : (
         <FlatList
@@ -94,9 +94,7 @@ export default function StoryScreen() {
             const def = STORY_EVENTS.find(e => e.key === item.event_key);
             const unread = profile ? isEventUnread(item, profile.id) : false;
             return (
-              <View
-                style={[styles.entry, unread && styles.entryUnread]}
-              >
+              <View style={[styles.entry, unread && styles.entryUnread]}>
                 <Text style={styles.entryEmoji}>{def?.emoji ?? '📌'}</Text>
                 <View style={styles.entryBody}>
                   <View style={styles.entryTitleRow}>
@@ -107,9 +105,7 @@ export default function StoryScreen() {
                   <Text style={styles.entryDate}>{new Date(item.triggered_at).toLocaleDateString()}</Text>
                 </View>
                 {unread && (
-                  <View>
-                    <Text style={styles.readBtn} onPress={() => setModalEvent(item)}>Read</Text>
-                  </View>
+                  <Text style={styles.readBtn} onPress={() => setModalEvent(item)}>Read</Text>
                 )}
               </View>
             );
@@ -118,47 +114,44 @@ export default function StoryScreen() {
       )}
 
       {modalEvent && (
-        <StoryModal
-          event={modalEvent}
-          onDismiss={() => markRead(modalEvent)}
-        />
+        <StoryModal event={modalEvent} onDismiss={() => markRead(modalEvent)} />
       )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#05050f' },
+  container: { flex: 1, backgroundColor: '#100d0a' },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#00e5ff' },
-  headerSub: { fontSize: 13, color: '#bf5af2', marginTop: 2 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#d4791c' },
+  headerSub: { fontSize: 13, color: '#c4a73e', marginTop: 2 },
   chapters: { flexDirection: 'row', justifyContent: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
-  chapterDot: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#0d0d1f', borderWidth: 2, borderColor: '#1e1e3f', alignItems: 'center', justifyContent: 'center' },
-  chapterDotUnlocked: { borderColor: '#00e5ff', backgroundColor: '#00e5ff22' },
-  chapterNum: { color: '#555570', fontWeight: '800', fontSize: 16 },
-  chapterNumUnlocked: { color: '#00e5ff' },
+  chapterDot: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1a1208', borderWidth: 2, borderColor: '#2a1f14', alignItems: 'center', justifyContent: 'center' },
+  chapterDotUnlocked: { borderColor: '#d4791c', backgroundColor: '#d4791c22' },
+  chapterNum: { color: '#5a4a3a', fontWeight: '800', fontSize: 16 },
+  chapterNumUnlocked: { color: '#d4791c' },
   list: { padding: 16, gap: 10 },
   entry: {
-    backgroundColor: '#0d0d1f',
+    backgroundColor: '#1a1208',
     borderRadius: 14,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1e1e3f',
+    borderColor: '#2a1f14',
     gap: 12,
   },
-  entryUnread: { borderColor: '#bf5af2' },
+  entryUnread: { borderColor: '#d4791c' },
   entryEmoji: { fontSize: 28, width: 36, textAlign: 'center' },
   entryBody: { flex: 1, gap: 2 },
   entryTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  entryTitle: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#bf5af2' },
-  entryChapter: { color: '#6b6b8a', fontSize: 12 },
-  entryDate: { color: '#555570', fontSize: 11 },
-  readBtn: { color: '#bf5af2', fontWeight: '700', fontSize: 13 },
+  entryTitle: { color: '#e8d5b8', fontWeight: '700', fontSize: 15 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#d4791c' },
+  entryChapter: { color: '#8a7a6a', fontSize: 12 },
+  entryDate: { color: '#5a4a3a', fontSize: 11 },
+  readBtn: { color: '#d4791c', fontWeight: '700', fontSize: 13 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 },
   emptyEmoji: { fontSize: 56, marginBottom: 12 },
-  emptyTitle: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 6 },
-  emptyText: { color: '#6b6b8a', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
+  emptyTitle: { color: '#e8d5b8', fontSize: 20, fontWeight: '700', marginBottom: 6 },
+  emptyText: { color: '#8a7a6a', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
 });

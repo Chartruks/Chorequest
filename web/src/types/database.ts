@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -78,12 +80,13 @@ export type Database = {
           category: string
           description: string | null
           energy_reward: number
+          food_reward: number
           id: string
-          materials_reward: number
+          knowledge_reward: number
+          money_reward: number
           morale_reward: number
           points_reward: number
           recurrence: string
-          research_reward: number
           story_chapter: number | null
           title: string
         }
@@ -91,12 +94,13 @@ export type Database = {
           category: string
           description?: string | null
           energy_reward?: number
+          food_reward?: number
           id?: string
-          materials_reward?: number
+          knowledge_reward?: number
+          money_reward?: number
           morale_reward?: number
           points_reward: number
           recurrence: string
-          research_reward?: number
           story_chapter?: number | null
           title: string
         }
@@ -104,12 +108,13 @@ export type Database = {
           category?: string
           description?: string | null
           energy_reward?: number
+          food_reward?: number
           id?: string
-          materials_reward?: number
+          knowledge_reward?: number
+          money_reward?: number
           morale_reward?: number
           points_reward?: number
           recurrence?: string
-          research_reward?: number
           story_chapter?: number | null
           title?: string
         }
@@ -124,13 +129,14 @@ export type Database = {
           description: string | null
           due_date: string | null
           energy_reward: number
+          food_reward: number
           household_id: string | null
           id: string
-          materials_reward: number
+          knowledge_reward: number
+          money_reward: number
           morale_reward: number
           points_reward: number
           recurrence: string
-          research_reward: number
           status: string
           template_id: string | null
           title: string
@@ -143,13 +149,14 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           energy_reward?: number
+          food_reward?: number
           household_id?: string | null
           id?: string
-          materials_reward?: number
+          knowledge_reward?: number
+          money_reward?: number
           morale_reward?: number
           points_reward?: number
           recurrence?: string
-          research_reward?: number
           status?: string
           template_id?: string | null
           title: string
@@ -162,13 +169,14 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           energy_reward?: number
+          food_reward?: number
           household_id?: string | null
           id?: string
-          materials_reward?: number
+          knowledge_reward?: number
+          money_reward?: number
           morale_reward?: number
           points_reward?: number
           recurrence?: string
-          research_reward?: number
           status?: string
           template_id?: string | null
           title?: string
@@ -200,35 +208,6 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "chore_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      crew_specializations: {
-        Row: {
-          chosen_at: string
-          id: string
-          profile_id: string | null
-          spec: string
-        }
-        Insert: {
-          chosen_at?: string
-          id?: string
-          profile_id?: string | null
-          spec: string
-        }
-        Update: {
-          chosen_at?: string
-          id?: string
-          profile_id?: string | null
-          spec?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "crew_specializations_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -293,37 +272,55 @@ export type Database = {
       }
       game_state: {
         Row: {
+          ammo: number
           created_at: string
           current_chapter: number
           energy: number
+          food: number
+          fuel: number
           household_id: string | null
           id: string
+          intel: number
+          knowledge: number
           last_idle_tick: string
-          materials: number
+          medicine: number
+          money: number
           morale: number
-          research: number
+          steel: number
         }
         Insert: {
+          ammo?: number
           created_at?: string
           current_chapter?: number
           energy?: number
+          food?: number
+          fuel?: number
           household_id?: string | null
           id?: string
+          intel?: number
+          knowledge?: number
           last_idle_tick?: string
-          materials?: number
+          medicine?: number
+          money?: number
           morale?: number
-          research?: number
+          steel?: number
         }
         Update: {
+          ammo?: number
           created_at?: string
           current_chapter?: number
           energy?: number
+          food?: number
+          fuel?: number
           household_id?: string | null
           id?: string
+          intel?: number
+          knowledge?: number
           last_idle_tick?: string
-          materials?: number
+          medicine?: number
+          money?: number
           morale?: number
-          research?: number
+          steel?: number
         }
         Relationships: [
           {
@@ -365,9 +362,10 @@ export type Database = {
           created_at: string | null
           household_id: string | null
           id: string
+          is_leader: boolean
           level: number
           points: number
-          role: string
+          role: string | null
           username: string | null
         }
         Insert: {
@@ -375,9 +373,10 @@ export type Database = {
           created_at?: string | null
           household_id?: string | null
           id: string
+          is_leader?: boolean
           level?: number
           points?: number
-          role?: string
+          role?: string | null
           username?: string | null
         }
         Update: {
@@ -385,9 +384,10 @@ export type Database = {
           created_at?: string | null
           household_id?: string | null
           id?: string
+          is_leader?: boolean
           level?: number
           points?: number
-          role?: string
+          role?: string | null
           username?: string | null
         }
         Relationships: [
@@ -521,7 +521,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_household_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

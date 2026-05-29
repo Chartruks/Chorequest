@@ -11,63 +11,49 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0d0d1f',
-          borderTopColor: '#1e1e3f',
+          backgroundColor: '#100d0a',
+          borderTopColor: '#2a1f14',
           paddingBottom: 8,
           height: 64,
         },
-        tabBarActiveTintColor: '#00e5ff',
-        tabBarInactiveTintColor: '#555570',
+        tabBarActiveTintColor: '#d4791c',
+        tabBarInactiveTintColor: '#5a4a3a',
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Missions',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🚀" focused={focused} />,
+          title: 'Chores',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="⚡" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="station"
+        name="settlement"
         options={{
-          title: 'Station',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏗️" focused={focused} />,
+          title: 'Settlement',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏚️" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="galaxy"
+        name="map"
         options={{
-          title: 'Galaxy',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🌌" focused={focused} />,
+          title: 'Map',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="story"
         options={{
-          title: 'Chronicle',
+          title: 'Story',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📖" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="leaderboard"
+        name="council"
         options={{
-          title: 'Ranks',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏆" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="rewards"
-        options={{
-          title: 'Rewards',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🎁" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Agent',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🧑‍🚀" focused={focused} />,
+          title: 'Council',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🏛️" focused={focused} />,
         }}
       />
     </Tabs>

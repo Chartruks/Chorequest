@@ -9,19 +9,19 @@ type StoryEvent = Database['public']['Tables']['story_events']['Row'];
 type GameState = Database['public']['Tables']['game_state']['Row'];
 
 const CHAPTER_TITLES: Record<number, string> = {
-  1: 'First Light',
-  2: 'Strange Signals',
+  1: 'First Days',
+  2: 'Signals in the Noise',
   3: 'The Fracture',
-  4: 'Dark Matter',
-  5: 'Homebound',
+  4: 'The Bunker',
+  5: 'Homeward',
 };
 
 const CHAPTER_COLORS: Record<number, string> = {
-  1: '#00e5ff',
-  2: '#bf5af2',
-  3: '#ff9f0a',
-  4: '#ff453a',
-  5: '#30d158',
+  1: '#d4791c',
+  2: '#c4a73e',
+  3: '#8a5a2a',
+  4: '#c04a2a',
+  5: '#6b9a4a',
 };
 
 interface Props {
@@ -54,8 +54,8 @@ export default function StoryClient({ profile, gameState, initialEvents }: Props
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <span className="text-6xl mb-4">📖</span>
-        <h2 className="text-2xl font-bold mb-2 text-white">No Crew Yet</h2>
-        <p style={{ color: '#6b6b8a' }}>Create or join a crew to unlock the story.</p>
+        <h2 className="text-2xl font-bold mb-2" style={{ color: '#e8d5b8' }}>No Settlement Yet</h2>
+        <p style={{ color: '#8a7a6a' }}>Create or join a settlement to unlock the story.</p>
       </div>
     );
   }
@@ -63,8 +63,8 @@ export default function StoryClient({ profile, gameState, initialEvents }: Props
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-black mb-1" style={{ color: '#00e5ff' }}>📖 Chronicle</h1>
-        <p className="text-sm" style={{ color: '#6b6b8a' }}>Your crew&apos;s story — chapter by chapter.</p>
+        <h1 className="text-3xl font-black mb-1" style={{ color: '#d4791c' }}>📖 Chronicle</h1>
+        <p className="text-sm" style={{ color: '#8a7a6a' }}>Your settlement&apos;s story — chapter by chapter.</p>
       </div>
 
       {/* Chapter Progress */}
@@ -77,14 +77,14 @@ export default function StoryClient({ profile, gameState, initialEvents }: Props
             <div
               key={ch}
               className="flex-shrink-0 rounded-2xl p-4 border min-w-[130px]"
-              style={{ background: '#0d0d1f', borderColor: unlocked ? color + '66' : '#1e1e3f', opacity: unlocked ? 1 : 0.4 }}
+              style={{ background: '#1a1208', borderColor: unlocked ? color + '66' : '#2a1f14', opacity: unlocked ? 1 : 0.4 }}
             >
-              <div className="text-xs font-semibold mb-1" style={{ color: unlocked ? color : '#6b6b8a' }}>Chapter {ch}</div>
-              <div className="font-bold text-white text-sm">{CHAPTER_TITLES[ch]}</div>
+              <div className="text-xs font-semibold mb-1" style={{ color: unlocked ? color : '#8a7a6a' }}>Chapter {ch}</div>
+              <div className="font-bold text-sm" style={{ color: '#e8d5b8' }}>{CHAPTER_TITLES[ch]}</div>
               {unlocked && chEvents.length > 0 && (
-                <div className="text-xs mt-1" style={{ color: '#6b6b8a' }}>{chEvents.length} event{chEvents.length !== 1 ? 's' : ''}</div>
+                <div className="text-xs mt-1" style={{ color: '#8a7a6a' }}>{chEvents.length} event{chEvents.length !== 1 ? 's' : ''}</div>
               )}
-              {!unlocked && <div className="text-xs mt-1" style={{ color: '#6b6b8a' }}>Locked</div>}
+              {!unlocked && <div className="text-xs mt-1" style={{ color: '#8a7a6a' }}>Locked</div>}
             </div>
           );
         })}
@@ -93,24 +93,24 @@ export default function StoryClient({ profile, gameState, initialEvents }: Props
       {/* Event Log */}
       {events.length === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
-          <span className="text-6xl mb-4">🛸</span>
-          <p className="text-xl font-bold text-white mb-2">No story events yet</p>
-          <p style={{ color: '#6b6b8a' }}>Complete missions and explore sectors to unlock the story.</p>
+          <span className="text-6xl mb-4">🏚️</span>
+          <p className="text-xl font-bold mb-2" style={{ color: '#e8d5b8' }}>No events yet</p>
+          <p style={{ color: '#8a7a6a' }}>Complete chores and scout the wasteland to unlock the story.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {[...events].reverse().map((event) => {
             const isUnread = profile?.id ? !event.read_by.includes(profile.id) : false;
-            const color = CHAPTER_COLORS[event.chapter] ?? '#00e5ff';
+            const color = CHAPTER_COLORS[event.chapter] ?? '#d4791c';
             return (
               <button
                 key={event.id}
                 onClick={() => openEvent(event)}
                 className="w-full text-left rounded-2xl p-5 border transition-opacity hover:opacity-80"
-                style={{ background: '#0d0d1f', borderColor: isUnread ? color : '#1e1e3f' }}
+                style={{ background: '#1a1208', borderColor: isUnread ? color : '#2a1f14' }}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{(event as any).emoji ?? '📡'}</span>
+                  <span className="text-2xl">{(event as any).emoji ?? '📜'}</span>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold" style={{ color }}>Ch.{event.chapter} · {CHAPTER_TITLES[event.chapter]}</span>
@@ -118,12 +118,12 @@ export default function StoryClient({ profile, gameState, initialEvents }: Props
                         <span className="w-2 h-2 rounded-full" style={{ background: color }} />
                       )}
                     </div>
-                    <div className="font-bold text-white">{(event as any).title ?? event.event_key}</div>
-                    <div className="text-xs mt-0.5" style={{ color: '#6b6b8a' }}>
+                    <div className="font-bold" style={{ color: '#e8d5b8' }}>{(event as any).title ?? event.event_key}</div>
+                    <div className="text-xs mt-0.5" style={{ color: '#8a7a6a' }}>
                       {new Date(event.triggered_at).toLocaleDateString()}
                     </div>
                   </div>
-                  <span style={{ color: '#6b6b8a' }}>›</span>
+                  <span style={{ color: '#8a7a6a' }}>›</span>
                 </div>
               </button>
             );
@@ -135,22 +135,22 @@ export default function StoryClient({ profile, gameState, initialEvents }: Props
       {selected && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(5,5,15,0.92)' }}
+          style={{ background: 'rgba(16,13,10,0.92)' }}
           onClick={() => setSelected(null)}
         >
           <div
             className="w-full max-w-lg rounded-3xl p-8 border"
-            style={{ background: '#0d0d1f', borderColor: CHAPTER_COLORS[selected.chapter] + '66' }}
+            style={{ background: '#1a1208', borderColor: CHAPTER_COLORS[selected.chapter] + '66' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-6">
-              <div className="text-5xl mb-3">{(selected as any).emoji ?? '📡'}</div>
+              <div className="text-5xl mb-3">{(selected as any).emoji ?? '📜'}</div>
               <div className="text-xs font-semibold mb-1" style={{ color: CHAPTER_COLORS[selected.chapter] }}>
                 Chapter {selected.chapter} · {CHAPTER_TITLES[selected.chapter]}
               </div>
-              <h2 className="text-2xl font-black text-white">{(selected as any).title ?? selected.event_key}</h2>
+              <h2 className="text-2xl font-black" style={{ color: '#e8d5b8' }}>{(selected as any).title ?? selected.event_key}</h2>
             </div>
-            <div className="text-sm leading-relaxed mb-6 max-h-64 overflow-y-auto" style={{ color: '#c0c0d8' }}>
+            <div className="text-sm leading-relaxed mb-6 max-h-64 overflow-y-auto" style={{ color: '#c0b090' }}>
               {((selected as any).narrative ?? selected.event_key).split('\n\n').map((para: string, i: number) => (
                 <p key={i} className={i > 0 ? 'mt-3' : ''}>{para}</p>
               ))}
@@ -158,7 +158,7 @@ export default function StoryClient({ profile, gameState, initialEvents }: Props
             <button
               onClick={() => setSelected(null)}
               className="w-full py-3 rounded-2xl font-bold"
-              style={{ backgroundColor: CHAPTER_COLORS[selected.chapter], color: '#05050f' }}
+              style={{ backgroundColor: CHAPTER_COLORS[selected.chapter], color: '#100d0a' }}
             >
               Acknowledged ›
             </button>

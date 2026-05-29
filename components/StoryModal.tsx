@@ -23,7 +23,7 @@ export default function StoryModal({ event, onDismiss }: Props) {
           </View>
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.narrative}>{def?.narrative ?? 'A new event has occurred.'}</Text>
+            <Text style={styles.narrative}>{def?.narrative ?? 'A new event has unfolded.'}</Text>
           </ScrollView>
 
           <Pressable style={styles.dismissBtn} onPress={onDismiss}>
@@ -44,10 +44,10 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   container: {
-    backgroundColor: '#0d0d1f',
+    backgroundColor: '#1a1208',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#bf5af2',
+    borderColor: '#d4791c',
     maxHeight: '80%',
     width: '100%',
     overflow: 'hidden',
@@ -58,21 +58,21 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 24,
     borderBottomWidth: 1,
-    borderColor: '#1e1e3f',
+    borderColor: '#2a1f14',
     gap: 8,
   },
-  chapter: { color: '#bf5af2', fontWeight: '700', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  chapter: { color: '#d4791c', fontWeight: '700', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
   emoji: { fontSize: 52 },
-  title: { color: '#fff', fontWeight: '800', fontSize: 22, textAlign: 'center' },
+  title: { color: '#e8d5b8', fontWeight: '800', fontSize: 22, textAlign: 'center' },
   scroll: { maxHeight: 300 },
   scrollContent: { padding: 24 },
-  narrative: { color: '#c8c8e0', fontSize: 15, lineHeight: 24 },
+  narrative: { color: '#c4b090', fontSize: 15, lineHeight: 24 },
   dismissBtn: {
-    backgroundColor: '#bf5af2',
+    backgroundColor: '#d4791c',
     margin: 20,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  dismissText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  dismissText: { color: '#100d0a', fontWeight: '800', fontSize: 16 },
 });

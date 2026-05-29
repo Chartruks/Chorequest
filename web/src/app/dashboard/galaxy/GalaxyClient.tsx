@@ -10,19 +10,19 @@ type Sector = Database['public']['Tables']['sectors']['Row'];
 type DiscoveredSector = Database['public']['Tables']['discovered_sectors']['Row'];
 type BaseModule = Database['public']['Tables']['base_modules']['Row'];
 
-const BIOME_INFO: Record<string, { emoji: string; color: string }> = {
-  nebula:         { emoji: '🌌', color: '#bf5af2' },
-  asteroid_field: { emoji: '☄️', color: '#ff9f0a' },
-  deep_space:     { emoji: '🔭', color: '#00e5ff' },
-  alien_world:    { emoji: '🪐', color: '#30d158' },
-  anomaly:        { emoji: '⚡', color: '#ff453a' },
+const BIOME_INFO: Record<string, { emoji: string; label: string; color: string }> = {
+  nebula:         { emoji: '🏚️', label: 'Ruins',    color: '#d4791c' },
+  asteroid_field: { emoji: '🛣️', label: 'Highway',  color: '#c4a73e' },
+  deep_space:     { emoji: '🌵', label: 'Wasteland', color: '#8a7a6a' },
+  alien_world:    { emoji: '🌲', label: 'Forest',    color: '#6b9a4a' },
+  anomaly:        { emoji: '🔦', label: 'Bunker',    color: '#8a5a2a' },
 };
 
 const STATUS_INFO: Record<string, { label: string; color: string }> = {
-  traveling:  { label: '🚀 Traveling', color: '#00e5ff' },
-  arrived:    { label: '✅ Arrived',   color: '#30d158' },
-  combat:     { label: '⚔️ Combat',    color: '#ff453a' },
-  discovered: { label: '🏁 Charted',   color: '#8e8ea0' },
+  traveling:  { label: '🥾 Scouting', color: '#d4791c' },
+  arrived:    { label: '✅ Arrived',  color: '#6b9a4a' },
+  combat:     { label: '⚔️ Combat',   color: '#c04a2a' },
+  discovered: { label: '🗺️ Scouted', color: '#8a7a6a' },
 };
 
 function formatCountdown(ms: number) {
@@ -72,7 +72,7 @@ export default function GalaxyClient({ profile, gameState: initialGs, sectors, i
 
   const currentChapter = initialGs?.current_chapter ?? 1;
 
-  const hangarLevel = modules.find((m) => m.module_type === 'hangar')?.level ?? 0;
+  const hangarLevel = modules.find((m) => m.module_type === 'watchtower')?.level ?? 0;
   const hasSpec = profile?.id; // we don't load spec here, just skip navigator bonus
 
   async function launchMission(sector: Sector) {
@@ -104,8 +104,8 @@ export default function GalaxyClient({ profile, gameState: initialGs, sectors, i
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <span className="text-6xl mb-4">🌌</span>
-        <h2 className="text-2xl font-bold mb-2 text-white">No Crew Yet</h2>
-        <p style={{ color: '#6b6b8a' }}>Create or join a crew to explore the galaxy.</p>
+        <h2 className="text-2xl font-bold mb-2" style={{ color: '#e8d5b8' }}>No Settlement Yet</h2>
+        <p style={{ color: '#8a7a6a' }}>Create or join a settlement to scout the map.</p>
       </div>
     );
   }
@@ -122,16 +122,16 @@ export default function GalaxyClient({ profile, gameState: initialGs, sectors, i
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-black mb-1" style={{ color: '#00e5ff' }}>🌌 Galaxy</h1>
-        <p className="text-sm" style={{ color: '#6b6b8a' }}>
-          Chapter {currentChapter} · {discoveredIds.size}/{sectors.length} sectors charted
+        <h1 className="text-3xl font-black mb-1" style={{ color: '#d4791c' }}>🗺️ Map</h1>
+        <p className="text-sm" style={{ color: '#8a7a6a' }}>
+          Chapter {currentChapter} · {discoveredIds.size}/{sectors.length} zones scouted
         </p>
       </div>
 
       {/* Active Missions */}
       {activeMissions.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-bold mb-3 text-white">Active Missions</h2>
+          <h2 className="text-lg font-bold mb-3" style={{ color: '#e8d5b8' }}>Active Scouts</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {activeMissions.map((m) => {
               const sector = sectors.find((s) => s.id === m.sector_id);
@@ -139,15 +139,15 @@ export default function GalaxyClient({ profile, gameState: initialGs, sectors, i
               const msLeft = new Date(m.arrives_at).getTime() - now;
               const status = STATUS_INFO[m.status] ?? { label: m.status, color: '#8e8ea0' };
               return (
-                <div key={m.id} className="rounded-2xl p-4 border" style={{ background: '#0d0d1f', borderColor: '#1e1e3f' }}>
+                <div key={m.id} className="rounded-2xl p-4 border" style={{ background: '#1a1208', borderColor: '#2a1f14' }}>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xl">{biome.emoji}</span>
-                    <span className="font-bold text-white">{sector?.name ?? 'Unknown'}</span>
+                    <span className="font-bold" style={{ color: '#e8d5b8' }}>{sector?.name ?? 'Unknown'}</span>
                     <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-lg" style={{ background: status.color + '22', color: status.color }}>{status.label}</span>
                   </div>
                   {m.status === 'traveling' && (
-                    <div className="text-sm font-bold mt-1" style={{ color: '#00e5ff' }}>
-                      ETA: {formatCountdown(msLeft)}
+                    <div className="text-sm font-bold mt-1" style={{ color: '#d4791c' }}>
+                      Returns: {formatCountdown(msLeft)}
                     </div>
                   )}
                 </div>

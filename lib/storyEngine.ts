@@ -13,48 +13,48 @@ export interface StoryEventDef {
 }
 
 export const STORY_EVENTS: StoryEventDef[] = [
-  // Chapter 1 — First Light
+  // Chapter 1 — First Days
   {
     key: 'ch1_crew_assembled',
     chapter: 1,
-    emoji: '🛸',
-    title: 'Crew Assembled',
+    emoji: '🏚️',
+    title: 'Settlement Founded',
     narrative:
-      'The station hums to life. Systems come online one by one. Your crew stands at their stations, eyes forward. The galaxy stretches beyond the viewport — vast, indifferent, waiting.\n\n"Commander, all systems nominal," your navigator reports. "Where do we begin?"\n\nYou feel the weight of it. Everything out there is unknown. Everything in here is yours to build.\n\n"We begin with the mission at hand," you say. "Then the stars."',
+      'The dust settles. What was rubble is becoming walls. What was open sky is becoming shelter.\n\nYour group stands in the ruin of what used to be a suburb, eyes scanning the perimeter. A child asks how long you\'re staying.\n\n"As long as it takes," you say.\n\nSomewhere out in the wasteland, other survivors are asking the same question. You intend to have the answer before they do.',
   },
   {
     key: 'ch1_first_mission',
     chapter: 1,
     emoji: '✅',
-    title: 'First Mission Complete',
+    title: 'First Task Ratified',
     narrative:
-      'Small victories matter. The first mission logged. Resources allocated. The crew moves with purpose now — tentative, but purposeful.\n\nA cadet catches your eye. "I didn\'t think it would feel like this," they say.\n\n"Like what?"\n\n"Like it\'s actually real."\n\nIt is. All of it.',
+      'Small victories matter. The first task completed and logged. Supplies allocated. The group moves with purpose now — cautious, but together.\n\nA young member catches your eye. "I didn\'t think it would feel like this," they say.\n\n"Like what?"\n\n"Like something actually matters again."\n\nIt does. All of it.',
   },
   {
     key: 'ch1_first_exploration',
     chapter: 1,
-    emoji: '🌌',
-    title: 'Into the Unknown',
+    emoji: '🗺️',
+    title: 'Into the Wasteland',
     narrative:
-      'Your ship clears the station\'s docking range and accelerates into open space. The crew grows quiet. Even the veterans.\n\nDeep space has a way of reminding you how small you are — and how much territory that leaves to explore.\n\nThe sector designation appears on the nav screen. Uncharted. Unnamed until now.\n\nYou give the order. The ship goes.',
+      'Your first scouting team returns at dusk, backpacks heavy with what the old world left behind.\n\nThe wasteland is bigger than your maps show. Quieter in the wrong ways. But it isn\'t empty.\n\nZones are being catalogued. Risks assessed. The settlement grows larger every day, not in walls, but in knowledge of what lies beyond them.\n\nYou give the order. The scouts go again tomorrow.',
   },
 
-  // Chapter 2 — Strange Signals
+  // Chapter 2 — Signals in the Noise
   {
     key: 'ch2_unlock',
     chapter: 2,
     emoji: '📡',
-    title: 'Strange Signals',
+    title: 'Signals in the Noise',
     narrative:
-      'The long-range array picks up something it can\'t classify. Not background radiation. Not stellar interference.\n\nPatterns. Repeating patterns.\n\nYour science officer runs the analysis three times before reporting. "Commander, this is structured. Someone — something — is transmitting."\n\nThe signal source is deep in sectors you haven\'t reached yet. You\'ll need more resources. Better equipment. A crew that\'s ready for what might be out there.\n\nChapter Two begins.',
+      'The radio crackles with something that isn\'t static. Not random. Too structured.\n\nPatterns. Repeating patterns on a frequency nobody was supposed to be broadcasting on.\n\nYour most technically-minded member runs the analysis twice before speaking. "This is intentional. Someone out there is transmitting."\n\nThe source is deep in zones you haven\'t scouted yet. You\'ll need more resources. Better tools. A crew that\'s ready.\n\nChapter Two begins.',
   },
   {
     key: 'ch2_first_contact',
     chapter: 2,
-    emoji: '👽',
+    emoji: '👥',
     title: 'First Contact',
     narrative:
-      'Your vessel drops out of transit and finds it waiting.\n\nNot a ship. Not a probe. Something in between — a structure with no recognisable origin, broadcasting on the same frequency as the signal.\n\nIt scans you. You can feel it.\n\nThen, a message. Not in any known language. But the meaning — somehow — is clear:\n\n"You are late. We expected you sooner."\n\nThe channel closes. The structure goes dark. Your crew stares at each other in silence.\n\nThe galaxy just got a great deal more complicated.',
+      'Your scouts find the source of the signal.\n\nNot a transmitter. A person. Someone who has been alive out there in the ruins, broadcasting every day, waiting for anyone to listen.\n\nThey are wary. You are cautious. But they have skills you need, and you have shelter they don\'t.\n\n"How long have you been alone?" you ask.\n\nThey count silently before answering. "Long enough."\n\nYour settlement just grew.',
   },
 
   // Chapter 3 — The Fracture
@@ -64,7 +64,7 @@ export const STORY_EVENTS: StoryEventDef[] = [
     emoji: '⚔️',
     title: 'The Fracture',
     narrative:
-      'Intelligence gathered from a dozen sectors has started to form a picture you didn\'t want to see.\n\nTwo factions. Ancient. Both claiming ownership of the space you\'ve been exploring. Both aware of your presence.\n\nOne sent a warning. The other sent nothing — which your tactical officer says is worse.\n\nThe Command Bridge is the only reason you\'re seeing this clearly. Without it, you\'d be flying blind into a war.\n\nChoose your path carefully from here.',
+      'Intelligence gathered from a dozen scouted zones has started to form a picture you didn\'t want to see.\n\nTwo other groups. Organised. Both moving through territory that overlaps with yours.\n\nOne sent a scout with a warning. The other sent nothing — which means they\'re either not concerned, or they\'re already inside your perimeter.\n\nThe Community Hall is the only reason you\'re coordinating clearly. Without it, the tension would already have broken you.\n\nChoose your path carefully from here.',
   },
   {
     key: 'ch3_saboteur',
@@ -72,17 +72,17 @@ export const STORY_EVENTS: StoryEventDef[] = [
     emoji: '🔒',
     title: 'Internal Threat',
     narrative:
-      'Station diagnostics flag an anomaly: someone has been rerouting sensor logs. Hiding something.\n\nYou don\'t have a name yet. What you have is evidence — and a crew that\'s about to start looking at each other differently.\n\nThe saboteur isn\'t trying to destroy you. They\'re trying to delay you. The question is: delay you from what?\n\nComplete your most critical missions. Maintain crew Morale. The answer will surface.',
+      'Someone has been moving supplies without authorisation. Small amounts. Enough to go unnoticed — until now.\n\nYou don\'t have a name yet. What you have is evidence — and a group that\'s about to start looking at each other differently.\n\nWhoever it is isn\'t trying to destroy the settlement. They\'re trying to delay something. The question is: delay what?\n\nComplete your most critical tasks. Keep Morale high. The truth will surface.',
   },
 
-  // Chapter 4 — Dark Matter
+  // Chapter 4 — The Bunker
   {
     key: 'ch4_unlock',
     chapter: 4,
-    emoji: '🏛️',
-    title: 'Ancient Ruins',
+    emoji: '🔦',
+    title: 'The Bunker',
     narrative:
-      'The sector map shows it as an anomaly — a gravitational signature with no visible source. When your ship arrives, you understand why.\n\nRuins. Impossibly old. A civilisation that predates every known spacefaring culture by ten thousand years at least.\n\nThey built something here. Something still active.\n\nYour science team estimates it will take months to understand what you\'ve found. You have weeks.\n\nDecisions made here will define what ChoreQuest becomes. Choose wisely.',
+      'Your scouts come back pale. They found something.\n\nA bunker. Pre-collapse. Sealed from the inside.\n\nWhatever is in there, whoever built it, they did not leave. The technology inside is decades ahead of anything you\'ve seen in the wasteland.\n\nAnd it\'s still running.\n\nThe decisions made here will define what your settlement becomes. Choose wisely.',
   },
   {
     key: 'ch4_choice',
@@ -90,17 +90,17 @@ export const STORY_EVENTS: StoryEventDef[] = [
     emoji: '⚖️',
     title: 'The Weight of Choice',
     narrative:
-      'The ancient device has two modes. Your team has spent days arguing about which to activate.\n\nOne will share the ruins\' knowledge with every faction in the galaxy. Peace through transparency. Risk: some of them may not handle it well.\n\nThe other will let you keep it. A private archive. Power, concentrated.\n\nYour crew is split. Your Commander must decide.\n\nThere is no right answer. There is only the one you can live with.',
+      'The bunker\'s central system has two modes. Your people have spent days debating which to activate.\n\nOne will broadcast its stored knowledge — medical records, pre-collapse engineering, crop data — to every working receiver in the region. Survival for all. Risk: including those who would use it against you.\n\nThe other will give you exclusive access. Power, concentrated here.\n\nYour settlement is divided. You must decide.\n\nThere is no right answer. There is only the one you can live with.',
   },
 
-  // Chapter 5 — Homebound
+  // Chapter 5 — Homeward
   {
     key: 'ch5_unlock',
     chapter: 5,
-    emoji: '🌟',
-    title: 'Homebound',
+    emoji: '🌅',
+    title: 'Homeward',
     narrative:
-      'The galaxy\'s edge. You\'ve mapped more space than any crew before you. The station is fully operational. The crew is tested, experienced, and ready.\n\nAnd now something is coming.\n\nLong-range sensors picked it up three days ago. The factions know. The ancient device predicted it.\n\nThis is what everything was for. Every mission. Every resource stockpiled. Every hard choice made.\n\nPrepare the crew. The final chapter begins.',
+      'You\'ve mapped more of the wasteland than anyone thought survivable. Your settlement stands. Your people are fed, trained, armed with knowledge.\n\nAnd now something is coming.\n\nLong-range scouts reported it three days ago. Other groups know. The bunker data predicted it.\n\nThis is what all of it was for. Every task completed. Every resource stored. Every hard choice made.\n\nPrepare the settlement. The final chapter begins.',
   },
   {
     key: 'ch5_final_battle',
@@ -108,16 +108,16 @@ export const STORY_EVENTS: StoryEventDef[] = [
     emoji: '🏆',
     title: 'The Reckoning',
     narrative:
-      'It is over.\n\nThe threat has passed — not through force alone, but through the network of alliances your crew built across years of exploration. Every sector charted, every contact made, every moral choice honoured — it all converged here.\n\nYour station holds. Your crew survives. The galaxy remembers you.\n\nThere is still work to be done. There always will be. But today, take a moment.\n\nYou built something real out here.\n\nWell done, Commander.',
+      'It is over.\n\nThe threat passed — not through force alone, but through the network of alliances your settlement built across months of hardship. Every zone scouted, every contact made, every decision honoured — it all converged here.\n\nYour walls hold. Your people survived. The wasteland remembers you differently now.\n\nThere is still work to do. There always will be. But today, take a moment.\n\nYou built something real here.\n\nWell done.',
   },
 ];
 
 export const CHAPTER_TITLES: Record<number, string> = {
-  1: 'First Light',
-  2: 'Strange Signals',
+  1: 'First Days',
+  2: 'Signals in the Noise',
   3: 'The Fracture',
-  4: 'Dark Matter',
-  5: 'Homebound',
+  4: 'The Bunker',
+  5: 'Homeward',
 };
 
 interface TriggerContext {
@@ -133,8 +133,8 @@ interface TriggerContext {
 export function getNewStoryEvents(ctx: TriggerContext): StoryEventDef[] {
   const { gameState, discoveredSectors, existingEventKeys } = ctx;
   const pending: StoryEventDef[] = [];
-  const totalResources = gameState.energy + gameState.research + gameState.materials;
-  const sectorsVisited = discoveredSectors.filter(d => d.status === 'discovered').length;
+  const totalResources = gameState.energy + gameState.knowledge + gameState.money + gameState.food;
+  const zonesVisited = discoveredSectors.filter(d => d.status === 'discovered').length;
 
   const add = (key: string) => {
     if (!existingEventKeys.includes(key)) {
@@ -146,30 +146,30 @@ export function getNewStoryEvents(ctx: TriggerContext): StoryEventDef[] {
   // Ch1 triggers
   if (ctx.approvedChoresTotal === 0) add('ch1_crew_assembled');
   if (ctx.approvedChoresTotal >= 1) add('ch1_first_mission');
-  if (sectorsVisited >= 1) add('ch1_first_exploration');
+  if (zonesVisited >= 1) add('ch1_first_exploration');
 
   // Ch2 triggers
-  if (totalResources >= 500 && sectorsVisited >= 3) {
+  if (totalResources >= 500 && zonesVisited >= 3) {
     add('ch2_unlock');
-    if (sectorsVisited >= 6) add('ch2_first_contact');
+    if (zonesVisited >= 6) add('ch2_first_contact');
   }
 
   // Ch3 triggers
   if (totalResources >= 1500 && ctx.hasModuleBridge) {
     add('ch3_unlock');
-    if (sectorsVisited >= 10) add('ch3_saboteur');
+    if (zonesVisited >= 10) add('ch3_saboteur');
   }
 
   // Ch4 triggers
-  if (totalResources >= 4000 && sectorsVisited >= 10 && ctx.maxProfileLevel >= 5) {
+  if (totalResources >= 4000 && zonesVisited >= 10 && ctx.maxProfileLevel >= 5) {
     add('ch4_unlock');
-    if (sectorsVisited >= 15) add('ch4_choice');
+    if (zonesVisited >= 15) add('ch4_choice');
   }
 
   // Ch5 triggers
-  if (ctx.hasAllModules && sectorsVisited >= 25) {
+  if (ctx.hasAllModules && zonesVisited >= 25) {
     add('ch5_unlock');
-    if (sectorsVisited >= 20 && totalResources >= 8000) add('ch5_final_battle');
+    if (zonesVisited >= 20 && totalResources >= 8000) add('ch5_final_battle');
   }
 
   return pending;

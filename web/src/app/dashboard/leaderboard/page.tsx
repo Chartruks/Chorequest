@@ -23,16 +23,16 @@ export default async function LeaderboardPage() {
   if (!profile?.household_id) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <span className="text-6xl mb-4">🏅</span>
-        <h2 className="text-2xl font-bold mb-2 text-white">No Crew Yet</h2>
-        <p style={{ color: '#6b6b8a' }}>Join a crew to see the rankings.</p>
+        <span className="text-6xl mb-4">🏆</span>
+        <h2 className="text-2xl font-bold mb-2" style={{ color: '#e8d5b8' }}>No Settlement Yet</h2>
+        <p style={{ color: '#8a7a6a' }}>Join a settlement to see the rankings.</p>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-3xl font-black mb-6" style={{ color: '#00e5ff' }}>🏆 Agent Rankings</h1>
+      <h1 className="text-3xl font-black mb-6" style={{ color: '#d4791c' }}>🏆 Survivor Ranks</h1>
 
       <div className="space-y-3 max-w-xl">
         {members.map((member, i) => {
@@ -41,16 +41,22 @@ export default async function LeaderboardPage() {
             <div
               key={member.id}
               className="flex items-center gap-4 rounded-2xl p-4 border"
-              style={{ background: '#0d0d1f', borderColor: isMe ? '#00e5ff' : '#1e1e3f' }}
+              style={{ background: '#1a1208', borderColor: isMe ? '#d4791c' : '#2a1f14' }}
             >
               <span className="text-3xl w-10 text-center">{MEDALS[i] ?? `#${i + 1}`}</span>
               <div className="flex-1">
-                <p className="font-bold text-white">{member.username ?? 'Agent'}{isMe && <span className="ml-2 text-xs" style={{ color: '#00e5ff' }}>(you)</span>}</p>
-                <p className="text-xs mt-0.5" style={{ color: '#6b6b8a' }}>{member.role === 'parent' ? '👩‍✈️ Commander' : '🤖 Cadet'}</p>
+                <p className="font-bold" style={{ color: '#e8d5b8' }}>
+                  {member.username ?? 'Survivor'}
+                  {isMe && <span className="ml-2 text-xs" style={{ color: '#d4791c' }}>(you)</span>}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#8a7a6a' }}>
+                  {member.is_leader ? '🏛️ Leader' : '🧍 Survivor'}
+                  {member.role ? ` · ${member.role.charAt(0).toUpperCase() + member.role.slice(1)}` : ''}
+                </p>
               </div>
               <div className="text-right">
-                <p className="font-bold" style={{ color: '#bf5af2' }}>Lv. {member.level}</p>
-                <p className="font-bold text-lg" style={{ color: '#00e5ff' }}>⭐ {member.points}</p>
+                <p className="font-bold" style={{ color: '#c4a73e' }}>Lv. {member.level}</p>
+                <p className="font-bold text-lg" style={{ color: '#d4791c' }}>⭐ {member.points}</p>
               </div>
             </div>
           );
