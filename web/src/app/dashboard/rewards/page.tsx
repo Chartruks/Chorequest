@@ -7,16 +7,13 @@ export default async function RewardsPage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
 
   let rewards: any[] = [];
-  let gameState = null;
-
   if (profile?.household_id) {
-    const [{ data: r }, { data: gs }] = await Promise.all([
-      supabase.from('rewards').select('*').eq('household_id', profile.household_id).order('points_cost'),
-      supabase.from('game_state').select('*').eq('household_id', profile.household_id).single(),
-    ]);
+    const { data: r } = await supabase
+      .from('rewards').select('*')
+      .eq('household_id', profile.household_id)
+      .order('points_cost');
     rewards = r ?? [];
-    gameState = gs;
   }
 
-  return <RewardsClient profile={profile} initialRewards={rewards} gameState={gameState} />;
+  return <RewardsClient profile={profile} initialRewards={rewards} />;
 }
