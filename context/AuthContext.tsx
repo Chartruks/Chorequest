@@ -4,34 +4,28 @@ import { supabase } from '../lib/supabase';
 import { Database } from '../types/database';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
-type GameState = Database['public']['Tables']['game_state']['Row'];
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
-  gameState: GameState | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  refreshGameState: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   profile: null,
-  gameState: null,
   loading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
-  refreshGameState: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [gameState, setGameState] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function fetchProfile(userId: string) {
@@ -41,24 +35,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', userId)
       .single();
     setProfile(data);
-    if (data?.household_id) await fetchGameState(data.household_id);
-  }
-
-  async function fetchGameState(householdId: string) {
-    const { data } = await supabase
-      .from('game_state')
-      .select('*')
-      .eq('household_id', householdId)
-      .single();
-    setGameState(data);
   }
 
   async function refreshProfile() {
     if (session?.user) await fetchProfile(session.user.id);
-  }
-
-  async function refreshGameState() {
-    if (profile?.household_id) await fetchGameState(profile.household_id);
   }
 
   useEffect(() => {
@@ -71,35 +51,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user) fetchProfile(session.user.id);
-      else { setProfile(null); setGameState(null); }
+      else setProfile(null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Reload game_state when household changes
-  useEffect(() => {
-    if (profile?.household_id) fetchGameState(profile.household_id);
-    else setGameState(null);
-  }, [profile?.household_id]);
 
   async function signOut() {
     await supabase.auth.signOut();
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        user: session?.user ?? null,
-        profile,
-        gameState,
-        loading,
-        signOut,
-        refreshProfile,
-        refreshGameState,
-      }}
-    >
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

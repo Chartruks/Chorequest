@@ -23,38 +23,19 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{
-          title: 'Chores',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="⚡" focused={focused} />,
-        }}
+        options={{ title: 'Chores', tabBarIcon: ({ focused }) => <TabIcon emoji="⚡" focused={focused} /> }}
       />
       <Tabs.Screen
-        name="settlement"
-        options={{
-          title: 'Settlement',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏚️" focused={focused} />,
-        }}
+        name="tower"
+        options={{ title: 'Tower', tabBarIcon: ({ focused }) => <TabIcon emoji="🏰" focused={focused} /> }}
       />
       <Tabs.Screen
-        name="map"
-        options={{
-          title: 'Map',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} />,
-        }}
+        name="character"
+        options={{ title: 'Character', tabBarIcon: ({ focused }) => <TabIcon emoji="🧑" focused={focused} /> }}
       />
       <Tabs.Screen
-        name="story"
-        options={{
-          title: 'Story',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📖" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="council"
-        options={{
-          title: 'Council',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏛️" focused={focused} />,
-        }}
+        name="store"
+        options={{ title: 'Store', tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" focused={focused} /> }}
       />
     </Tabs>
   );

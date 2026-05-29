@@ -5,9 +5,8 @@ import SignOutButton from './SignOutButton';
 
 const NAV = [
   { href: '/dashboard/quests',      emoji: '⚡',  label: 'Chores' },
-  { href: '/dashboard/station',     emoji: '🏚️', label: 'Settlement' },
-  { href: '/dashboard/galaxy',      emoji: '🗺️', label: 'Map' },
-  { href: '/dashboard/story',       emoji: '📖',  label: 'Story' },
+  { href: '/dashboard/tower',       emoji: '🏰',  label: 'Tower' },
+  { href: '/dashboard/store',       emoji: '🛒',  label: 'Store' },
   { href: '/dashboard/leaderboard', emoji: '🏆',  label: 'Ranks' },
   { href: '/dashboard/rewards',     emoji: '🎁',  label: 'Rewards' },
   { href: '/dashboard/profile',     emoji: '🏛️', label: 'Profile' },
