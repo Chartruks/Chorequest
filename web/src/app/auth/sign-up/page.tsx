@@ -10,7 +10,7 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [role, setRole] = useState<'parent' | 'child'>('parent');
+  const [isLeader, setIsLeader] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -23,7 +23,7 @@ export default function SignUpPage() {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) { setError(error.message); setLoading(false); return; }
     if (data.user) {
-      await supabase.from('profiles').update({ username, role }).eq('id', data.user.id);
+      await supabase.from('profiles').update({ username, is_leader: isLeader }).eq('id', data.user.id);
     }
     setLoading(false);
     setDone(true);
@@ -31,12 +31,12 @@ export default function SignUpPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#05050f' }}>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#100d0a' }}>
         <div className="text-center max-w-md">
-          <span className="text-6xl">📡</span>
-          <h2 className="text-2xl font-bold mt-4 mb-2" style={{ color: '#00e5ff' }}>Transmission Sent</h2>
-          <p style={{ color: '#8e8ea0' }}>We sent a confirmation link to <strong className="text-white">{email}</strong>. Confirm to activate your agent profile.</p>
-          <Link href="/auth/sign-in" className="inline-block mt-6 px-6 py-3 rounded-xl font-bold" style={{ backgroundColor: '#00e5ff', color: '#05050f' }}>
+          <span className="text-6xl">📬</span>
+          <h2 className="text-2xl font-bold mt-4 mb-2" style={{ color: '#d4791c' }}>Check Your Email</h2>
+          <p style={{ color: '#8a7a6a' }}>We sent a confirmation link to <strong style={{ color: '#e8d5b8' }}>{email}</strong>. Confirm to activate your survivor profile.</p>
+          <Link href="/auth/sign-in" className="inline-block mt-6 px-6 py-3 rounded-xl font-bold" style={{ backgroundColor: '#d4791c', color: '#100d0a' }}>
             Go to Sign In
           </Link>
         </div>
@@ -45,15 +45,15 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#05050f' }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#100d0a' }}>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <span className="text-6xl">🚀</span>
-          <h1 className="text-4xl font-black mt-2" style={{ color: '#00e5ff' }}>Enlist in ChoreQuest</h1>
-          <p className="mt-1" style={{ color: '#6b6b8a' }}>Create your agent profile</p>
+          <span className="text-6xl">🏚️</span>
+          <h1 className="text-4xl font-black mt-2" style={{ color: '#d4791c' }}>Join Ashen Keep</h1>
+          <p className="mt-1" style={{ color: '#8a7a6a' }}>Create your survivor profile</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-2xl p-8 space-y-4 border" style={{ background: '#0d0d1f', borderColor: '#1e1e3f' }}>
+        <form onSubmit={handleSubmit} className="rounded-2xl p-8 space-y-4 border" style={{ background: '#1a1208', borderColor: '#2a1f14' }}>
           {error && (
             <div className="rounded-lg px-4 py-3 text-sm" style={{ background: '#ff453a22', color: '#ff6961', border: '1px solid #ff453a44' }}>
               {error}
@@ -61,62 +61,66 @@ export default function SignUpPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: '#8e8ea0' }}>Call sign</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#8a7a6a' }}>Survivor name</label>
             <input
               type="text"
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-400"
-              style={{ background: '#05050f', border: '1px solid #1e1e3f' }}
+              placeholder="e.g. Asha, Rex, Nora"
+              className="w-full rounded-xl px-4 py-3 outline-none"
+              style={{ background: '#100d0a', border: '1px solid #2a1f14', color: '#e8d5b8' }}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: '#8e8ea0' }}>Email</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#8a7a6a' }}>Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-400"
-              style={{ background: '#05050f', border: '1px solid #1e1e3f' }}
+              className="w-full rounded-xl px-4 py-3 outline-none"
+              style={{ background: '#100d0a', border: '1px solid #2a1f14', color: '#e8d5b8' }}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: '#8e8ea0' }}>Password</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#8a7a6a' }}>Password</label>
             <input
               type="password"
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-400"
-              style={{ background: '#05050f', border: '1px solid #1e1e3f' }}
+              className="w-full rounded-xl px-4 py-3 outline-none"
+              style={{ background: '#100d0a', border: '1px solid #2a1f14', color: '#e8d5b8' }}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: '#8e8ea0' }}>My rank is…</label>
+            <label className="block text-sm font-medium mb-2" style={{ color: '#8a7a6a' }}>Your role</label>
             <div className="grid grid-cols-2 gap-3">
-              {(['parent', 'child'] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRole(r)}
-                  className="rounded-xl p-4 text-center border-2 transition-all"
-                  style={{
-                    background: role === r ? '#001a1f' : '#05050f',
-                    borderColor: role === r ? '#00e5ff' : '#1e1e3f',
-                  }}
-                >
-                  <div className="text-3xl mb-1">{r === 'parent' ? '👩‍✈️' : '🤖'}</div>
-                  <div className="font-semibold" style={{ color: role === r ? '#00e5ff' : '#8e8ea0' }}>
-                    {r === 'parent' ? 'Commander' : 'Cadet'}
-                  </div>
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setIsLeader(true)}
+                className="rounded-xl p-4 text-center border-2 transition-all"
+                style={{ background: isLeader ? '#d4791c11' : '#100d0a', borderColor: isLeader ? '#d4791c' : '#2a1f14' }}
+              >
+                <div className="text-3xl mb-1">🏛️</div>
+                <div className="font-semibold" style={{ color: isLeader ? '#d4791c' : '#8a7a6a' }}>Leader</div>
+                <div className="text-xs mt-1" style={{ color: '#5a4a3a' }}>Found & manage the settlement</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsLeader(false)}
+                className="rounded-xl p-4 text-center border-2 transition-all"
+                style={{ background: !isLeader ? '#c4a73e11' : '#100d0a', borderColor: !isLeader ? '#c4a73e' : '#2a1f14' }}
+              >
+                <div className="text-3xl mb-1">🧍</div>
+                <div className="font-semibold" style={{ color: !isLeader ? '#c4a73e' : '#8a7a6a' }}>Survivor</div>
+                <div className="text-xs mt-1" style={{ color: '#5a4a3a' }}>Complete tasks &amp; earn credits</div>
+              </button>
             </div>
           </div>
 
@@ -124,14 +128,14 @@ export default function SignUpPage() {
             type="submit"
             disabled={loading}
             className="w-full py-4 rounded-xl font-bold text-lg transition-opacity disabled:opacity-60"
-            style={{ backgroundColor: '#00e5ff', color: '#05050f' }}
+            style={{ backgroundColor: '#d4791c', color: '#100d0a' }}
           >
-            {loading ? 'Enlisting…' : 'Begin Mission'}
+            {loading ? 'Registering…' : 'Join the Keep'}
           </button>
 
-          <p className="text-center text-sm" style={{ color: '#6b6b8a' }}>
-            Already enlisted?{' '}
-            <Link href="/auth/sign-in" className="font-semibold" style={{ color: '#00e5ff' }}>
+          <p className="text-center text-sm" style={{ color: '#8a7a6a' }}>
+            Already a survivor?{' '}
+            <Link href="/auth/sign-in" className="font-semibold" style={{ color: '#d4791c' }}>
               Sign In
             </Link>
           </p>
