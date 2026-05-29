@@ -32,9 +32,9 @@ const STATUS_LABELS: Record<string, string> = {
 const CATEGORY_EMOJI: Record<string, string> = {
   maintenance: '⚙️',
   learning:    '📚',
-  cleanliness: '🍽️',
+  food:        '🍽️',
+  work:        '💼',
   family:      '👨‍👩‍👧',
-  special:     '⭐',
 };
 
 export default function ChoresScreen() {
@@ -83,11 +83,11 @@ export default function ChoresScreen() {
 
       if (profile?.household_id && gameState) {
         await supabase.from('game_state').update({
-          energy:    gameState.energy    + applyMoraleMultiplier(chore.energy_reward,    morale),
-          knowledge: gameState.knowledge + applyMoraleMultiplier(chore.knowledge_reward, morale),
-          money:     gameState.money     + applyMoraleMultiplier(chore.money_reward,     morale),
-          food:      gameState.food      + applyMoraleMultiplier(chore.food_reward,      morale),
-          morale:    Math.min(100, gameState.morale + applyMoraleMultiplier(chore.morale_reward, morale)),
+          energy:     gameState.energy     + applyMoraleMultiplier(chore.energy_reward,     morale),
+          knowledge:  gameState.knowledge  + applyMoraleMultiplier(chore.knowledge_reward,  morale),
+          money:      gameState.money      + applyMoraleMultiplier(chore.money_reward,      morale),
+          food:       gameState.food       + applyMoraleMultiplier(chore.food_reward,       morale),
+          population: gameState.population + applyMoraleMultiplier(chore.population_reward, morale),
         }).eq('household_id', profile.household_id);
         await refreshGameState();
       }

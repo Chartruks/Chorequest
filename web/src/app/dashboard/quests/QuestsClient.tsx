@@ -28,12 +28,12 @@ const STATUS_LABELS: Record<string, string> = {
 const CATEGORY_EMOJI: Record<string, string> = {
   maintenance: '⚙️',
   learning:    '📚',
-  cleanliness: '🍽️',
+  food:        '🍽️',
   family:      '👨‍👩‍👧',
-  special:     '⭐',
+  work:        '💼',
 };
 
-const CATEGORIES = ['maintenance', 'learning', 'cleanliness', 'family', 'special'];
+const CATEGORIES = ['maintenance', 'learning', 'food', 'family', 'work'];
 
 interface Props {
   profile: Profile | null;
@@ -52,11 +52,11 @@ export default function QuestsClient({ profile, initialChores, templates, gameSt
   const [description, setDescription] = useState('');
   const [points, setPoints] = useState(10);
   const [category, setCategory] = useState('maintenance');
-  const [energyReward, setEnergyReward]       = useState(0);
-  const [knowledgeReward, setKnowledgeReward] = useState(0);
-  const [moneyReward, setMoneyReward]         = useState(0);
-  const [foodReward, setFoodReward]           = useState(0);
-  const [moraleReward, setMoraleReward]       = useState(0);
+  const [energyReward, setEnergyReward]           = useState(0);
+  const [knowledgeReward, setKnowledgeReward]     = useState(0);
+  const [moneyReward, setMoneyReward]             = useState(0);
+  const [foodReward, setFoodReward]               = useState(0);
+  const [populationReward, setPopulationReward]   = useState(0);
   const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
@@ -80,7 +80,7 @@ export default function QuestsClient({ profile, initialChores, templates, gameSt
     setKnowledgeReward(t.knowledge_reward);
     setMoneyReward(t.money_reward);
     setFoodReward(t.food_reward);
-    setMoraleReward(t.morale_reward);
+    setPopulationReward(t.population_reward);
     setShowTemplates(false);
     setShowForm(true);
   }
@@ -94,11 +94,11 @@ export default function QuestsClient({ profile, initialChores, templates, gameSt
       description: t.description ?? null,
       points_reward: t.points_reward,
       category: t.category,
-      energy_reward:    t.energy_reward,
-      knowledge_reward: t.knowledge_reward,
-      money_reward:     t.money_reward,
-      food_reward:      t.food_reward,
-      morale_reward:    t.morale_reward,
+      energy_reward:     t.energy_reward,
+      knowledge_reward:  t.knowledge_reward,
+      money_reward:      t.money_reward,
+      food_reward:       t.food_reward,
+      population_reward: t.population_reward,
       created_by: profile.id,
       template_id: t.id,
     });
@@ -116,15 +116,15 @@ export default function QuestsClient({ profile, initialChores, templates, gameSt
       description: description || null,
       points_reward: points,
       category,
-      energy_reward:    energyReward,
-      knowledge_reward: knowledgeReward,
-      money_reward:     moneyReward,
-      food_reward:      foodReward,
-      morale_reward:    moraleReward,
+      energy_reward:     energyReward,
+      knowledge_reward:  knowledgeReward,
+      money_reward:      moneyReward,
+      food_reward:       foodReward,
+      population_reward: populationReward,
       created_by: profile.id,
     });
     setTitle(''); setDescription(''); setPoints(10); setCategory('maintenance');
-    setEnergyReward(0); setKnowledgeReward(0); setMoneyReward(0); setFoodReward(0); setMoraleReward(0);
+    setEnergyReward(0); setKnowledgeReward(0); setMoneyReward(0); setFoodReward(0); setPopulationReward(0);
     setShowForm(false);
     await refresh();
     setSaving(false);
@@ -156,11 +156,11 @@ export default function QuestsClient({ profile, initialChores, templates, gameSt
 
     if (profile?.household_id && gameState) {
       await supabase.from('game_state').update({
-        energy:    gameState.energy    + applyMoraleMultiplier(chore.energy_reward,    morale),
-        knowledge: gameState.knowledge + applyMoraleMultiplier(chore.knowledge_reward, morale),
-        money:     gameState.money     + applyMoraleMultiplier(chore.money_reward,     morale),
-        food:      gameState.food      + applyMoraleMultiplier(chore.food_reward,      morale),
-        morale:    Math.min(100, gameState.morale + applyMoraleMultiplier(chore.morale_reward, morale)),
+        energy:     gameState.energy      + applyMoraleMultiplier(chore.energy_reward,     morale),
+        knowledge:  gameState.knowledge   + applyMoraleMultiplier(chore.knowledge_reward,  morale),
+        money:      gameState.money       + applyMoraleMultiplier(chore.money_reward,      morale),
+        food:       gameState.food        + applyMoraleMultiplier(chore.food_reward,       morale),
+        population: gameState.population  + applyMoraleMultiplier(chore.population_reward, morale),
       }).eq('household_id', profile.household_id);
     }
 
@@ -236,8 +236,8 @@ export default function QuestsClient({ profile, initialChores, templates, gameSt
                 t.energy_reward    > 0 && `⚡+${t.energy_reward}`,
                 t.knowledge_reward > 0 && `📚+${t.knowledge_reward}`,
                 t.money_reward     > 0 && `💵+${t.money_reward}`,
-                t.food_reward      > 0 && `🥫+${t.food_reward}`,
-                t.morale_reward    > 0 && `💜+${t.morale_reward}`,
+                t.food_reward        > 0 && `🥫+${t.food_reward}`,
+                t.population_reward  > 0 && `👥+${t.population_reward}`,
               ].filter(Boolean).join(' ');
               return (
                 <div key={t.id} className="rounded-xl p-4 border" style={{ background: '#100d0a', borderColor: '#2a1f14' }}>
@@ -327,8 +327,8 @@ export default function QuestsClient({ profile, initialChores, templates, gameSt
               <input type="number" min={0} max={100} value={foodReward} onChange={(e) => setFoodReward(Number(e.target.value))} className="w-full rounded-xl px-3 py-2 outline-none text-center" style={{ background: '#100d0a', border: '1px solid #2a1f14', color: '#e8d5b8' }} />
             </div>
             <div>
-              <label className="text-xs font-medium block mb-1" style={{ color: '#8a7a6a' }}>💜 Morale</label>
-              <input type="number" min={0} max={100} value={moraleReward} onChange={(e) => setMoraleReward(Number(e.target.value))} className="w-full rounded-xl px-3 py-2 outline-none text-center" style={{ background: '#100d0a', border: '1px solid #2a1f14', color: '#e8d5b8' }} />
+              <label className="text-xs font-medium block mb-1" style={{ color: '#8a7a6a' }}>👥 Population</label>
+              <input type="number" min={0} max={100} value={populationReward} onChange={(e) => setPopulationReward(Number(e.target.value))} className="w-full rounded-xl px-3 py-2 outline-none text-center" style={{ background: '#100d0a', border: '1px solid #2a1f14', color: '#e8d5b8' }} />
             </div>
           </div>
           <div className="flex gap-3">
@@ -355,8 +355,8 @@ export default function QuestsClient({ profile, initialChores, templates, gameSt
               chore.energy_reward    > 0 && `⚡+${chore.energy_reward}`,
               chore.knowledge_reward > 0 && `📚+${chore.knowledge_reward}`,
               chore.money_reward     > 0 && `💵+${chore.money_reward}`,
-              chore.food_reward      > 0 && `🥫+${chore.food_reward}`,
-              chore.morale_reward    > 0 && `💜+${chore.morale_reward}`,
+              chore.food_reward        > 0 && `🥫+${chore.food_reward}`,
+              chore.population_reward  > 0 && `👥+${chore.population_reward}`,
             ].filter(Boolean).join(' ');
             const statusColor = STATUS_COLORS[chore.status] ?? '#5a4a3a';
             return (
