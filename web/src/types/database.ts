@@ -4,6 +4,12 @@ export type Database = {
   __InternalSupabase: { PostgrestVersion: "14.5" }
   public: {
     Tables: {
+      chore_log: {
+        Row: { id: string; household_id: string; profile_id: string | null; chore_title: string; damage: number; created_at: string }
+        Insert: { id?: string; household_id: string; profile_id?: string | null; chore_title: string; damage?: number; created_at?: string }
+        Update: { id?: string; household_id?: string; profile_id?: string | null; chore_title?: string; damage?: number; created_at?: string }
+        Relationships: []
+      }
       households: {
         Row: { created_at: string | null; created_by: string | null; id: string; invite_code: string; name: string }
         Insert: { created_at?: string | null; created_by?: string | null; id?: string; invite_code: string; name: string }
@@ -15,14 +21,14 @@ export type Database = {
           avatar_url: string | null; character_type: string; created_at: string | null
           household_id: string | null; id: string; is_leader: boolean
           last_monster_attack: string; level: number; monster_hp: number
-          player_hp: number; player_max_hp: number; points: number
+          player_hp: number; player_max_hp: number; points: number; push_token: string | null
           role: string | null; tower_floor: number; username: string | null; xp: number
         }
         Insert: {
           avatar_url?: string | null; character_type?: string; created_at?: string | null
           household_id?: string | null; id: string; is_leader?: boolean
           last_monster_attack?: string; level?: number; monster_hp?: number
-          player_hp?: number; player_max_hp?: number; points?: number
+          player_hp?: number; player_max_hp?: number; points?: number; push_token?: string | null
           role?: string | null; tower_floor?: number; username?: string | null; xp?: number
         }
         Update: {

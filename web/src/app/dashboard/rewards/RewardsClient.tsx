@@ -71,7 +71,7 @@ export default function RewardsClient({ profile, initialRewards }: Props) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-3xl font-black" style={{ color: '#d4791c' }}>🎁 Rewards</h1>
           <p className="text-sm mt-1" style={{ color: '#8a7a6a' }}>Balance: 💰 {profile.points}</p>

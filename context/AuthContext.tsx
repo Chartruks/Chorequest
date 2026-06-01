@@ -1,5 +1,7 @@
 import { Session, User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { Database } from '../types/database';
 
@@ -28,6 +30,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  async function registerPushToken(userId: string) {
+    try {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('chores', {
+          name: 'Chore notifications',
+          importance: Notifications.AndroidImportance.MAX,
+        });
+      }
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') return;
+      const token = await Notifications.getExpoPushTokenAsync({
+        projectId: 'e8e98649-30e5-4c69-813a-dafedc0f95db',
+      });
+      await supabase.from('profiles').update({ push_token: token.data } as any).eq('id', userId);
+    } catch { /* silent */ }
+  }
+
   async function fetchProfile(userId: string) {
     const { data } = await supabase
       .from('profiles')
@@ -44,8 +63,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user) fetchProfile(session.user.id).finally(() => setLoading(false));
-      else setLoading(false);
+      if (session?.user) {
+        fetchProfile(session.user.id).finally(() => setLoading(false));
+        registerPushToken(session.user.id);
+      } else setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

@@ -1,210 +1,259 @@
-import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View,
-} from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Dimensions, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { calcMaxHp, getEquippedBonus, xpForNextLevel } from '../../lib/towerEngine';
 import { supabase } from '../../lib/supabase';
+import { Database } from '../../types/database';
+import { C, F } from '../../constants/theme';
 
 type PlayerItem = any;
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
-const ITEM_TYPE_LABEL: Record<string, string> = {
-  character: '🧑 Character',
-  weapon:    '⚔️ Weapon',
-  armor:     '🛡️ Armor',
-};
+const SW = Dimensions.get('window').width;
+const SLOT_SIZE = Math.floor((SW - 28 - 32) / 5);
 
-export default function CharacterScreen() {
+const IDLE_FRAMES = [
+  require('../../assets/characters/1/frame_0000.png'),
+  require('../../assets/characters/1/frame_0001.png'),
+  require('../../assets/characters/1/frame_0002.png'),
+  require('../../assets/characters/1/frame_0003.png'),
+  require('../../assets/characters/1/frame_0004.png'),
+  require('../../assets/characters/1/frame_0005.png'),
+  require('../../assets/characters/1/frame_0006.png'),
+  require('../../assets/characters/1/frame_0007.png'),
+  require('../../assets/characters/1/frame_0008.png'),
+  require('../../assets/characters/1/frame_0009.png'),
+  require('../../assets/characters/1/frame_0010.png'),
+  require('../../assets/characters/1/frame_0011.png'),
+  require('../../assets/characters/1/frame_0012.png'),
+  require('../../assets/characters/1/frame_0013.png'),
+  require('../../assets/characters/1/frame_0014.png'),
+];
+
+function IdleSprite() {
+  const [frame, setFrame] = useState(0);
+  const ref = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    ref.current = setInterval(() => setFrame(f => (f + 1) % IDLE_FRAMES.length), Math.round(2000 / 15));
+    return () => { if (ref.current) clearInterval(ref.current); };
+  }, []);
+  return <Image source={IDLE_FRAMES[frame]} style={s.spriteImage} resizeMode="contain" />;
+}
+
+export default function CharacterScreen({ onClose }: { onClose?: () => void }) {
   const { profile } = useAuth();
   const [playerItems, setPlayerItems] = useState<PlayerItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [family, setFamily]           = useState<Profile[]>([]);
+  const [inviteCode, setInviteCode]   = useState('');
+  const [loading, setLoading]         = useState(true);
 
-  useFocusEffect(
-    useCallback(() => {
-      async function load() {
-        if (!profile) return;
-        const { data } = await supabase
-          .from('player_items')
-          .select('*, store_items(*)')
-          .eq('profile_id', profile.id);
-        setPlayerItems(data ?? []);
-        setLoading(false);
-      }
-      load();
-    }, [profile?.id])
-  );
+  useEffect(() => {
+    if (!profile) return;
+    const p1 = supabase.from('player_items').select('*, store_items(*)').eq('profile_id', profile.id);
+    const p2 = profile.household_id
+      ? supabase.from('profiles').select('*').eq('household_id', profile.household_id).neq('id', profile.id)
+      : Promise.resolve({ data: [] as Profile[] });
+    const p3 = profile.household_id && profile.is_leader
+      ? supabase.from('households').select('invite_code').eq('id', profile.household_id).single()
+      : Promise.resolve({ data: null });
+    Promise.all([p1, p2, p3]).then(([{ data: items }, { data: fam }, { data: hh }]) => {
+      setPlayerItems(items ?? []);
+      setFamily(fam ?? []);
+      if (hh && 'invite_code' in hh) setInviteCode((hh as any).invite_code ?? '');
+      setLoading(false);
+    });
+  }, [profile?.id]);
 
   if (!profile) return null;
+  if (loading) return (
+    <SafeAreaView style={s.container}>
+      <ActivityIndicator color={C.primary} style={{ marginTop: 80 }} />
+    </SafeAreaView>
+  );
 
-  if (loading) {
-    return <SafeAreaView style={s.container}><ActivityIndicator color="#d4791c" style={{ marginTop: 80 }} /></SafeAreaView>;
-  }
-
-  const xp = xpForNextLevel(profile.xp);
-  const xpPct = xp.current / xp.needed;
-  const hpPct = profile.player_hp / Math.max(1, profile.player_max_hp);
-  const equipped = playerItems.filter(pi => pi.equipped);
-  const unequipped = playerItems.filter(pi => !pi.equipped);
-  const bonus = getEquippedBonus(playerItems);
-  const maxHp = calcMaxHp(profile, playerItems);
+  const xp      = xpForNextLevel(profile.xp);
+  const xpPct   = xp.current / xp.needed;
+  const maxHp   = calcMaxHp(profile, playerItems);
+  const hpPct   = profile.player_hp / Math.max(1, maxHp);
+  const bonus   = getEquippedBonus(playerItems);
+  const equipped = playerItems.filter((pi: any) => pi.equipped);
 
   return (
     <SafeAreaView style={s.container}>
-      <ScrollView contentContainerStyle={s.scroll}>
-        {/* Character sprite placeholder */}
-        <View style={s.spritePlaceholder}>
-          <Text style={s.spriteEmoji}>🧑</Text>
-          <Text style={s.spriteSub}>[ character sprite placeholder ]</Text>
-        </View>
+      {onClose && (
+        <Pressable onPress={onClose} style={s.backBtn}>
+          <Text style={s.backBtnText}>← BACK</Text>
+        </Pressable>
+      )}
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Name + level */}
-        <Text style={s.name}>{profile.username ?? 'Survivor'}</Text>
-        <View style={s.levelRow}>
-          <View style={s.levelBadge}><Text style={s.levelText}>Lv.{profile.level}</Text></View>
-          <Text style={s.floorText}>Floor {profile.tower_floor}</Text>
-        </View>
+        {/* ── TOP ROW ── */}
+        <View style={s.topRow}>
 
-        {/* XP bar */}
-        <View style={s.statBlock}>
-          <View style={s.barRow}>
-            <Text style={s.barLabel}>XP</Text>
-            <Text style={s.barValue}>{xp.current} / {xp.needed}</Text>
+          {/* Sprite */}
+          <View style={s.spriteCol}>
+            <View style={s.spriteBox}>
+              <IdleSprite />
+            </View>
           </View>
-          <View style={s.barTrack}>
-            <View style={[s.barFill, { width: `${xpPct * 100}%` as any, backgroundColor: '#c4a73e' }]} />
-          </View>
-        </View>
 
-        {/* HP bar */}
-        <View style={s.statBlock}>
-          <View style={s.barRow}>
-            <Text style={s.barLabel}>HP</Text>
-            <Text style={s.barValue}>{profile.player_hp} / {maxHp}</Text>
-          </View>
-          <View style={s.barTrack}>
-            <View style={[s.barFill, { width: `${hpPct * 100}%` as any, backgroundColor: '#4a8a5e' }]} />
-          </View>
-        </View>
+          {/* Stats */}
+          <View style={s.infoCol}>
+            <Text style={s.name} numberOfLines={1}>{(profile.username ?? 'HERO').toUpperCase()}</Text>
 
-        {/* Stats grid */}
-        <View style={s.statsGrid}>
-          <View style={s.stat}>
-            <Text style={s.statVal}>💰 {profile.points}</Text>
-            <Text style={s.statLbl}>Money</Text>
-          </View>
-          <View style={s.stat}>
-            <Text style={s.statVal}>⭐ {profile.xp}</Text>
-            <Text style={s.statLbl}>Total XP</Text>
-          </View>
-          <View style={s.stat}>
-            <Text style={s.statVal}>⚔️ +{bonus.damage}</Text>
-            <Text style={s.statLbl}>Dmg Bonus</Text>
-          </View>
-          <View style={s.stat}>
-            <Text style={s.statVal}>🛡️ +{bonus.hp}</Text>
-            <Text style={s.statLbl}>HP Bonus</Text>
-          </View>
-        </View>
+            <View style={s.badgeRow}>
+              <View style={s.lvBadge}><Text style={s.lvText}>LV.{profile.level}</Text></View>
+              <View style={s.floorBadge}><Text style={s.floorText}>FL.{profile.tower_floor}</Text></View>
+            </View>
 
-        {/* Equipped items */}
-        {equipped.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Equipped</Text>
-            {equipped.map(pi => (
-              <View key={pi.id} style={s.itemRow}>
-                <Text style={s.itemEmoji}>{pi.store_items.emoji}</Text>
-                <View style={s.itemInfo}>
-                  <Text style={s.itemName}>{pi.store_items.name}</Text>
-                  <Text style={s.itemType}>{ITEM_TYPE_LABEL[pi.store_items.item_type]}</Text>
-                </View>
-                {pi.store_items.damage_bonus > 0 && <Text style={s.itemStat}>+{pi.store_items.damage_bonus} ⚔️</Text>}
-                {pi.store_items.hp_bonus > 0 && <Text style={s.itemStat}>+{pi.store_items.hp_bonus} 🛡️</Text>}
+            <View style={s.barBlock}>
+              <View style={s.barHead}>
+                <Text style={s.barLbl}>XP</Text>
+                <Text style={s.barVal}>{xp.current}/{xp.needed}</Text>
               </View>
-            ))}
-          </View>
-        )}
-
-        {/* Inventory */}
-        {unequipped.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Inventory</Text>
-            {unequipped.map(pi => (
-              <View key={pi.id} style={[s.itemRow, { opacity: 0.6 }]}>
-                <Text style={s.itemEmoji}>{pi.store_items.emoji}</Text>
-                <View style={s.itemInfo}>
-                  <Text style={s.itemName}>{pi.store_items.name}</Text>
-                  <Text style={s.itemType}>{ITEM_TYPE_LABEL[pi.store_items.item_type]} · not equipped</Text>
-                </View>
+              <View style={s.track}>
+                <View style={[s.fill, { width: `${xpPct * 100}%` as any, backgroundColor: C.xp }]} />
               </View>
-            ))}
+            </View>
+
+            <View style={s.barBlock}>
+              <View style={s.barHead}>
+                <Text style={s.barLbl}>HP</Text>
+                <Text style={s.barVal}>{profile.player_hp}/{maxHp}</Text>
+              </View>
+              <View style={s.track}>
+                <View style={[s.fill, { width: `${hpPct * 100}%` as any, backgroundColor: C.hp }]} />
+              </View>
+            </View>
+
+            {/* Attack + Defense row */}
+            <View style={s.statsRow}>
+              <Text style={[s.stat, { color: C.damage }]}>⚔️  +{bonus.damage}</Text>
+              <Text style={[s.stat, { color: C.hp }]}>🛡️  +{bonus.hp}</Text>
+            </View>
+
+            {/* Money row */}
+            <View style={s.moneyRow}>
+              <Text style={[s.stat, { color: C.gold }]}>💰  {profile.points}</Text>
+            </View>
+
+            {/* Invite code */}
+            {profile.is_leader && inviteCode ? (
+              <View style={s.inviteBox}>
+                <Text style={s.inviteLbl}>FAMILY CODE</Text>
+                <Text style={s.inviteCode}>{inviteCode}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        {/* ── EQUIPMENT SLOTS ── */}
+        <View style={s.slotsRow}>
+          {[0, 1, 2, 3, 4].map(i => {
+            const item = equipped[i];
+            return (
+              <View key={i} style={s.slot}>
+                {item
+                  ? <Text style={s.slotEmoji}>{item.store_items.emoji}</Text>
+                  : <Text style={s.slotPlus}>+</Text>
+                }
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ── FAMILY ── */}
+        {family.length > 0 && (
+          <View style={s.familySection}>
+            <View style={s.sectionHead}>
+              <Text style={s.sectionHeadText}>FAMILY</Text>
+            </View>
+            {family.map(m => {
+              const mHpPct = Math.max(0, m.player_hp / Math.max(1, m.player_max_hp));
+              return (
+                <View key={m.id} style={s.memberRow}>
+                  <Text style={{ fontSize: 24 }}>{m.is_leader ? '👑' : '🧑'}</Text>
+                  <View style={s.memberInfo}>
+                    <View style={s.memberTopRow}>
+                      <Text style={s.memberName}>{(m.username ?? 'HERO').toUpperCase()}</Text>
+                      <Text style={s.memberSub}>LV.{m.level} · FL.{m.tower_floor}</Text>
+                    </View>
+                    <View style={s.track}>
+                      <View style={[s.fill, { width: `${mHpPct * 100}%` as any, backgroundColor: C.hp }]} />
+                    </View>
+                  </View>
+                  <Text style={s.memberHp}>{m.player_hp}/{m.player_max_hp}</Text>
+                </View>
+              );
+            })}
           </View>
         )}
 
-        {equipped.length === 0 && unequipped.length === 0 && (
-          <View style={s.emptyInv}>
-            <Text style={s.emptyInvText}>No equipment yet — visit the Store tab.</Text>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#100d0a' },
-  scroll:    { padding: 20, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: C.bg },
+  backBtn:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
+  backBtnText: { fontFamily: F.pixel, fontSize: 9, color: C.textMuted, letterSpacing: 1 },
+  scroll:    { padding: 14, paddingBottom: 48 },
 
-  spritePlaceholder: {
-    height: 180, borderRadius: 16, backgroundColor: '#1a1208',
-    borderWidth: 1, borderColor: '#2a1f14', borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  topRow:    { flexDirection: 'row', alignItems: 'stretch', gap: 12, marginBottom: 16 },
+  spriteCol: { flex: 1 },
+  spriteBox: {
+    flex: 1, minHeight: 260,
+    backgroundColor: C.card, borderWidth: 2, borderColor: C.border,
+    borderRadius: 16, alignItems: 'center', justifyContent: 'center',
   },
-  spriteEmoji: { fontSize: 72 },
-  spriteSub:   { color: '#3a2f24', fontSize: 11, marginTop: 8 },
+  spriteImage: { width: '100%' as any, height: '100%' as any },
 
-  name:     { color: '#e8d5b8', fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 8 },
-  levelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 20 },
-  levelBadge: {
-    backgroundColor: '#d4791c', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 4,
+  infoCol: { flex: 1 },
+
+  name:      { fontFamily: F.pixel, fontSize: 16, color: C.text, marginBottom: 10, letterSpacing: 1, lineHeight: 26 },
+  badgeRow:  { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  lvBadge:   { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, borderBottomWidth: 3, borderBottomColor: C.primaryDark },
+  lvText:    { fontFamily: F.pixel, fontSize: 9, color: C.bg },
+  floorBadge:{ backgroundColor: C.card, borderWidth: 2, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  floorText: { fontFamily: F.pixel, fontSize: 9, color: C.textMuted },
+
+  barBlock: { marginBottom: 10 },
+  barHead:  { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  barLbl:   { fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 },
+  barVal:   { fontFamily: F.pixel, fontSize: 8, color: C.text },
+  track:    { height: 10, backgroundColor: C.cardAlt, borderRadius: 3, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
+  fill:     { height: 10, borderRadius: 3 },
+
+  statsRow: { flexDirection: 'row', gap: 16, marginBottom: 8 },
+  moneyRow: { marginBottom: 10 },
+  stat:     { fontFamily: F.pixel, fontSize: 12, lineHeight: 22 },
+
+  inviteBox:  { marginTop: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  inviteLbl:  { fontFamily: F.pixel, fontSize: 6, color: C.textMuted, letterSpacing: 1, marginBottom: 3 },
+  inviteCode: { fontFamily: F.pixel, fontSize: 11, color: C.primary, letterSpacing: 3 },
+
+  slotsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  slot: {
+    width: SLOT_SIZE, height: SLOT_SIZE,
+    backgroundColor: C.card, borderWidth: 2, borderColor: C.border,
+    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
   },
-  levelText:  { color: '#100d0a', fontWeight: '800', fontSize: 15 },
-  floorText:  { color: '#8a7a6a', fontSize: 14 },
+  slotEmoji: { fontSize: 22 },
+  slotPlus:  { fontFamily: F.pixel, fontSize: 18, color: C.border },
 
-  statBlock: { marginBottom: 12 },
-  barRow:    { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  barLabel:  { color: '#8a7a6a', fontSize: 12, fontWeight: '600' },
-  barValue:  { color: '#e8d5b8', fontSize: 12, fontWeight: '700' },
-  barTrack:  { height: 8, backgroundColor: '#2a1f14', borderRadius: 4, overflow: 'hidden' },
-  barFill:   { height: 8, borderRadius: 4 },
+  familySection:   { gap: 8 },
+  sectionHead:     { backgroundColor: C.primary, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 4, borderRadius: 12 },
+  sectionHeadText: { fontFamily: F.pixel, fontSize: 8, color: C.bg, letterSpacing: 1 },
 
-  statsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
-    marginBottom: 24, marginTop: 8,
+  memberRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: C.card, borderWidth: 2, borderColor: C.border,
+    borderRadius: 14, padding: 12,
   },
-  stat:    {
-    flex: 1, minWidth: '45%', backgroundColor: '#1a1208',
-    borderRadius: 12, padding: 12, alignItems: 'center',
-    borderWidth: 1, borderColor: '#2a1f14',
-  },
-  statVal: { color: '#e8d5b8', fontSize: 16, fontWeight: '800', marginBottom: 2 },
-  statLbl: { color: '#8a7a6a', fontSize: 11 },
-
-  section:      { marginBottom: 20 },
-  sectionTitle: { color: '#e8d5b8', fontSize: 16, fontWeight: '800', marginBottom: 8 },
-
-  itemRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#1a1208', borderRadius: 12,
-    padding: 12, borderWidth: 1, borderColor: '#2a1f14', marginBottom: 8,
-  },
-  itemEmoji: { fontSize: 24 },
-  itemInfo:  { flex: 1 },
-  itemName:  { color: '#e8d5b8', fontWeight: '700', fontSize: 14 },
-  itemType:  { color: '#8a7a6a', fontSize: 11 },
-  itemStat:  { color: '#d4791c', fontWeight: '700', fontSize: 13 },
-
-  emptyInv:     { alignItems: 'center', paddingTop: 20 },
-  emptyInvText: { color: '#8a7a6a', fontSize: 14 },
+  memberInfo:   { flex: 1 },
+  memberTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 },
+  memberName:   { fontFamily: F.pixel, fontSize: 8, color: C.text },
+  memberSub:    { fontFamily: F.pixel, fontSize: 7, color: C.textMuted },
+  memberHp:     { fontFamily: F.pixel, fontSize: 7, color: C.textMuted, minWidth: 44, textAlign: 'right' },
 });

@@ -28,7 +28,7 @@ export default async function StorePage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-3xl font-black" style={{ color: '#d4791c' }}>🛒 Store</h1>
           <p className="text-sm mt-1" style={{ color: '#8a7a6a' }}>Buy on mobile — browse here.</p>

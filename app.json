@@ -4,7 +4,7 @@
     "slug": "chorequest",
     "scheme": "chorequest",
     "version": "1.0.0",
-    "sdkVersion": "51.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -26,6 +26,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      ["expo-notifications", { "icon": "./assets/icon.png", "color": "#d4791c" }]
+    ],
     "extra": {
       "eas": {
         "projectId": "e8e98649-30e5-4c69-813a-dafedc0f95db"

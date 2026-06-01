@@ -10,18 +10,6 @@ type Profile = Database['public']['Tables']['profiles']['Row'];
 type Chore = Database['public']['Tables']['chores']['Row'];
 type ChoreTemplate = Database['public']['Tables']['chore_templates']['Row'];
 
-const STATUS_COLORS: Record<string, string> = {
-  pending:     '#d4791c',
-  in_progress: '#c4a73e',
-  completed:   '#6b9a4a',
-  approved:    '#4a8a5e',
-};
-const STATUS_LABELS: Record<string, string> = {
-  pending:     'Open',
-  in_progress: 'In Progress',
-  completed:   'Done ✓',
-  approved:    'Approved ★',
-};
 const CATEGORY_EMOJI: Record<string, string> = {
   maintenance: '⚙️',
   learning:    '📚',
@@ -50,6 +38,8 @@ export default function QuestsClient({ profile, initialChores, templates }: Prop
   const [xpReward, setXpReward]         = useState(10);
   const [damageReward, setDamageReward] = useState(5);
   const [saving, setSaving] = useState(false);
+  const [confirmChore, setConfirmChore] = useState<Chore | null>(null);
+  const [attacking, setAttacking] = useState(false);
 
   const supabase = createClient();
 
@@ -112,45 +102,69 @@ export default function QuestsClient({ profile, initialChores, templates }: Prop
     setSaving(false);
   }
 
-  async function claimChore(id: string) {
-    await supabase.from('chores').update({ assigned_to: profile!.id, status: 'in_progress' }).eq('id', id);
-    await refresh();
+  // Notify every other family member that this player attacked
+  async function notifyFamily(chore: Chore, damage: number) {
+    if (!profile?.household_id) return;
+    try {
+      const { data: members } = await supabase
+        .from('profiles').select('id, push_token')
+        .eq('household_id', profile.household_id);
+      const tokens = (members ?? [])
+        .filter((m: any) => m.id !== profile.id && m.push_token)
+        .map((m: any) => m.push_token);
+      if (tokens.length === 0) return;
+      await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          tokens.map((to: string) => ({
+            to,
+            title: '⚔️ Attack!',
+            body: `${profile.username ?? 'A member'} did "${chore.title}" (${damage} dmg)`,
+            data: { choreId: chore.id },
+          }))
+        ),
+      });
+    } catch { /* silent */ }
   }
 
-  async function completeChore(id: string) {
-    await supabase.from('chores').update({ status: 'completed' }).eq('id', id);
-    await refresh();
-  }
+  // Tapping a chore = the current player completes it → damage their own monster
+  async function executeAttack(chore: Chore) {
+    if (!profile) return;
+    setAttacking(true);
 
-  async function approveChore(chore: Chore) {
-    if (!chore.assigned_to) return;
-    await supabase.from('chores').update({ status: 'approved' }).eq('id', chore.id);
+    const { data: pi } = await supabase.from('player_items').select('*, store_items(*)').eq('profile_id', profile.id);
+    const damage       = calcTotalDamage(chore.damage_reward, profile, pi ?? []);
+    const newMonsterHp = Math.max(0, profile.monster_hp - damage);
+    const updates: Record<string, any> = { monster_hp: newMonsterHp };
 
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', chore.assigned_to).single();
-    if (!p) return;
-
-    const { data: pi } = await supabase.from('player_items').select('*, store_items(*)').eq('profile_id', p.id);
-    const damage = calcTotalDamage(chore.damage_reward, p, pi ?? []);
-    const newXp = p.xp + chore.xp_reward;
-    const newLevel = calcLevel(newXp);
-    const newPoints = p.points + chore.points_reward;
-    const newMonsterHp = Math.max(0, p.monster_hp - damage);
-
-    const updates: Record<string, any> = { xp: newXp, level: newLevel, points: newPoints, monster_hp: newMonsterHp };
-
-    if (newMonsterHp === 0 && p.tower_floor < 20) {
-      const nextFloor = p.tower_floor + 1;
+    if (newMonsterHp === 0 && profile.tower_floor < 20) {
+      const nextFloor = profile.tower_floor + 1;
       const { data: fd } = await supabase.from('tower_floors').select('*').eq('floor', nextFloor).single();
       if (fd) {
+        const newXp = profile.xp + fd.xp_reward;
         updates.tower_floor = nextFloor;
-        updates.monster_hp = fd.monster_max_hp;
-        updates.xp = newXp + fd.xp_reward;
-        updates.level = calcLevel(newXp + fd.xp_reward);
-        updates.points = newPoints + fd.money_reward;
+        updates.monster_hp  = fd.monster_max_hp;
+        updates.xp          = newXp;
+        updates.level       = calcLevel(newXp);
+        updates.points      = profile.points + fd.money_reward;
       }
     }
 
-    await supabase.from('profiles').update(updates as any).eq('id', chore.assigned_to);
+    await supabase.from('profiles').update(updates as any).eq('id', profile.id);
+
+    if (profile.household_id) {
+      await supabase.from('chore_log').insert({
+        household_id: profile.household_id,
+        profile_id:   profile.id,
+        chore_title:  chore.title,
+        damage,
+      } as any);
+      await notifyFamily(chore, damage);
+    }
+
+    setAttacking(false);
+    setConfirmChore(null);
     await refresh();
     router.refresh();
   }
@@ -166,13 +180,15 @@ export default function QuestsClient({ profile, initialChores, templates }: Prop
   }
 
   const filteredTemplates = templates.filter(t => !templateFilter || t.category === templateFilter);
+  const weak   = chores.filter(c => c.recurrence !== 'weekly' && c.recurrence !== 'special');
+  const strong = chores.filter(c => c.recurrence === 'weekly' || c.recurrence === 'special');
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-3xl font-black" style={{ color: '#d4791c' }}>⚡ Chores</h1>
-          <p className="text-sm mt-1" style={{ color: '#8a7a6a' }}>{chores.filter(c => c.status === 'pending').length} open</p>
+          <h1 className="text-3xl font-black" style={{ color: '#d4791c' }}>⚔️ Attack</h1>
+          <p className="text-sm mt-1" style={{ color: '#8a7a6a' }}>Click a chore to strike the enemy</p>
         </div>
         {profile.is_leader && (
           <div className="flex gap-2">
@@ -282,50 +298,66 @@ export default function QuestsClient({ profile, initialChores, templates }: Prop
       {chores.length === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
           <span className="text-6xl mb-4">📋</span>
-          <p className="text-xl font-bold mb-2" style={{ color: '#e8d5b8' }}>No tasks yet</p>
+          <p className="text-xl font-bold mb-2" style={{ color: '#e8d5b8' }}>No chores yet</p>
           {profile.is_leader && <p style={{ color: '#8a7a6a' }}>Click &quot;Templates&quot; or &quot;New Task&quot; to get started.</p>}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {chores.map(chore => {
-            const statusColor = STATUS_COLORS[chore.status] ?? '#5a4a3a';
-            return (
-              <div key={chore.id} className="rounded-2xl p-5 border" style={{ background: '#1a1208', borderColor: '#2a1f14' }}>
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-bold text-lg flex-1 mr-2" style={{ color: '#e8d5b8' }}>
-                    {CATEGORY_EMOJI[chore.category] ?? '📋'} {chore.title}
-                  </h3>
-                  <span className="text-xs font-bold px-2 py-1 rounded-lg shrink-0"
-                    style={{ background: statusColor + '22', color: statusColor }}>
-                    {STATUS_LABELS[chore.status] ?? chore.status}
-                  </span>
-                </div>
-                {chore.description && <p className="text-sm mb-3" style={{ color: '#8a7a6a' }}>{chore.description}</p>}
-                <div className="flex gap-2 mb-3">
-                  <span className="text-xs px-2 py-1 rounded font-bold" style={{ background: '#2a1f14', color: '#c4a73e' }}>💰 {chore.points_reward}</span>
-                  <span className="text-xs px-2 py-1 rounded font-bold" style={{ background: '#2a1f14', color: '#c4a73e' }}>⭐ {chore.xp_reward} xp</span>
-                  <span className="text-xs px-2 py-1 rounded font-bold" style={{ background: '#2a1f14', color: '#c4a73e' }}>⚔️ {chore.damage_reward} dmg</span>
-                </div>
-                <div className="flex items-center justify-end">
-                  {chore.status === 'pending' && (
-                    <button onClick={() => claimChore(chore.id)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-bold"
-                      style={{ backgroundColor: '#d4791c', color: '#100d0a' }}>Claim</button>
-                  )}
-                  {chore.status === 'in_progress' && chore.assigned_to === profile.id && (
-                    <button onClick={() => completeChore(chore.id)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-bold"
-                      style={{ backgroundColor: '#6b9a4a', color: '#100d0a' }}>Report Done</button>
-                  )}
-                  {chore.status === 'completed' && profile.is_leader && (
-                    <button onClick={() => approveChore(chore)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-bold"
-                      style={{ backgroundColor: '#4a8a5e', color: '#100d0a' }}>Approve ★</button>
-                  )}
-                </div>
+        <div className="space-y-8 mt-4">
+          {([
+            { label: '⚡ Weak Attacks',   items: weak },
+            { label: '💥 Strong Attacks', items: strong },
+          ] as const).filter(g => g.items.length > 0).map(group => (
+            <div key={group.label}>
+              <h2 className="text-sm font-black mb-3" style={{ color: '#c4a73e' }}>{group.label}</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {group.items.map(chore => (
+                  <button
+                    key={chore.id}
+                    onClick={() => setConfirmChore(chore)}
+                    className="text-left rounded-2xl p-5 border transition-transform hover:scale-[1.02] active:scale-95"
+                    style={{ background: '#1a1208', borderColor: '#2a1f14' }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-bold text-lg flex-1 mr-2" style={{ color: '#e8d5b8' }}>
+                        {CATEGORY_EMOJI[chore.category] ?? '📋'} {chore.title}
+                      </h3>
+                      <span className="text-sm font-bold px-2 py-1 rounded-lg shrink-0" style={{ background: '#2a1f14', color: '#ff7070' }}>
+                        ⚔️ {chore.damage_reward}
+                      </span>
+                    </div>
+                    {chore.description && <p className="text-sm" style={{ color: '#8a7a6a' }}>{chore.description}</p>}
+                  </button>
+                ))}
               </div>
-            );
-          })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Confirm attack dialog */}
+      {confirmChore && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => !attacking && setConfirmChore(null)}>
+          <div className="w-full max-w-sm rounded-2xl p-6 border" style={{ background: '#1a1208', borderColor: '#d4791c' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="text-center text-4xl mb-2">{CATEGORY_EMOJI[confirmChore.category] ?? '📋'}</div>
+            <h3 className="text-center font-black text-xl mb-1" style={{ color: '#e8d5b8' }}>{confirmChore.title}</h3>
+            <p className="text-center text-sm mb-1" style={{ color: '#ff7070' }}>
+              {confirmChore.recurrence === 'weekly' || confirmChore.recurrence === 'special' ? '💥 Strong' : '⚡ Weak'} · ⚔️ {confirmChore.damage_reward} dmg
+            </p>
+            <p className="text-center text-sm mb-5" style={{ color: '#8a7a6a' }}>Did you complete this chore?</p>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => executeAttack(confirmChore)} disabled={attacking}
+                className="py-3 rounded-xl font-bold disabled:opacity-50"
+                style={{ backgroundColor: '#ff7070', color: '#100d0a' }}>
+                {attacking ? 'Attacking…' : 'Confirm Attack ⚔️'}
+              </button>
+              <button onClick={() => setConfirmChore(null)} disabled={attacking}
+                className="py-2.5 rounded-xl font-bold border" style={{ borderColor: '#2a1f14', color: '#8a7a6a' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

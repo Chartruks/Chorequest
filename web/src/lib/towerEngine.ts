@@ -5,7 +5,7 @@ type TowerFloor = Database['public']['Tables']['tower_floors']['Row'];
 type StoreItem = Database['public']['Tables']['store_items']['Row'];
 type PlayerItem = Database['public']['Tables']['player_items']['Row'] & { store_items: StoreItem };
 
-export const XP_PER_LEVEL = 100;
+export const XP_PER_LEVEL = 1;
 export const MAX_FLOOR = 20;
 
 export function calcLevel(xp: number): number {
