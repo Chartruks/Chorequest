@@ -22,6 +22,9 @@ export type Database = {
           household_id: string | null; id: string; is_leader: boolean
           last_monster_attack: string; level: number; monster_hp: number
           player_hp: number; player_max_hp: number; points: number
+          revive_progress: number
+          monsters_defeated: number; gold_spent: number; deaths: number
+          revives: number; chores_done: number
           role: string | null; tower_floor: number; username: string | null; xp: number
         }
         Insert: {
@@ -29,6 +32,7 @@ export type Database = {
           household_id?: string | null; id: string; is_leader?: boolean
           last_monster_attack?: string; level?: number; monster_hp?: number
           player_hp?: number; player_max_hp?: number; points?: number
+          revive_progress?: number
           role?: string | null; tower_floor?: number; username?: string | null; xp?: number
         }
         Update: {

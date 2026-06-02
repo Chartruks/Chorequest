@@ -4,7 +4,7 @@ import {
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { calcLevel, calcTotalDamage } from '../../lib/towerEngine';
+import { calcLevel, calcTotalDamage, calcMaxHp, maxHpForLevel, MAX_FLOOR } from '../../lib/towerEngine';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import { C, F } from '../../constants/theme';
@@ -91,6 +91,8 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
   async function save() {
     if (!title.trim()) return;
     setSaving(true);
+    // Damage is fixed by type: weak (daily) = 1, strong (weekly) = 3.
+    // XP + gold now come from defeating monsters, so chore reward fields are 0.
     await supabase.from('chores').insert({
       household_id:   householdId ?? null,
       created_by:     createdBy,
@@ -98,9 +100,9 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
       category:       selected?.category ?? 'maintenance',
       recurrence,
       status:         'pending',
-      points_reward:  Number(points) || 10,
-      xp_reward:      Number(xp) || 10,
-      damage_reward:  Number(dmg) || 5,
+      points_reward:  0,
+      xp_reward:      0,
+      damage_reward:  recurrence === 'weekly' ? 3 : 1,
     });
     setSaving(false);
     reset();
@@ -156,28 +158,15 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
               onChangeText={setTitle}
             />
 
-            {/* Recurrence toggle */}
+            {/* Recurrence toggle — daily = weak attack (1 dmg), weekly = strong (3 dmg) */}
             <View style={ms.toggle}>
               {(['daily', 'weekly'] as const).map(r => (
                 <Pressable key={r} style={[ms.toggleBtn, recurrence === r && ms.toggleBtnActive]} onPress={() => setRecurrence(r)}>
-                  <Text style={[ms.toggleTxt, recurrence === r && ms.toggleTxtActive]}>{r.toUpperCase()}</Text>
+                  <Text style={[ms.toggleTxt, recurrence === r && ms.toggleTxtActive]}>
+                    {r === 'daily' ? 'DAILY · ⚡ WEAK' : 'WEEKLY · 💥 STRONG'}
+                  </Text>
                 </Pressable>
               ))}
-            </View>
-
-            <View style={ms.rewardRow}>
-              <View style={ms.rewardField}>
-                <Text style={ms.rewardLbl}>💰 GOLD</Text>
-                <TextInput style={ms.rewardInput} value={points} onChangeText={setPoints} keyboardType="number-pad" />
-              </View>
-              <View style={ms.rewardField}>
-                <Text style={ms.rewardLbl}>⭐ XP</Text>
-                <TextInput style={ms.rewardInput} value={xp} onChangeText={setXp} keyboardType="number-pad" />
-              </View>
-              <View style={ms.rewardField}>
-                <Text style={ms.rewardLbl}>⚔️ DMG</Text>
-                <TextInput style={ms.rewardInput} value={dmg} onChangeText={setDmg} keyboardType="number-pad" />
-              </View>
             </View>
 
             <Pressable
@@ -194,9 +183,11 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
 }
 
 // ── Confirm Modal ────────────────────────────────────────────────
-function ConfirmChoreModal({ chore, busy, onClose, onConfirm }: {
+function ConfirmChoreModal({ chore, busy, dead, reviveProgress, onClose, onConfirm }: {
   chore: Chore | null;
   busy: boolean;
+  dead: boolean;
+  reviveProgress: number;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -211,18 +202,22 @@ function ConfirmChoreModal({ chore, busy, onClose, onConfirm }: {
         <Text style={cm.title}>{chore.title.toUpperCase()}</Text>
         {chore.description ? <Text style={cm.desc}>{chore.description}</Text> : null}
         <View style={cm.rewards}>
-          <Text style={[cm.chip, { color: strong ? '#ff7070' : C.gold }]}>
-            {strong ? '💥 STRONG' : '⚡ WEAK'} · ⚔️ {chore.damage_reward} DMG
-          </Text>
+          {dead ? (
+            <Text style={[cm.chip, { color: C.hp }]}>💀 REVIVE {reviveProgress}/2</Text>
+          ) : (
+            <Text style={[cm.chip, { color: strong ? '#ff7070' : C.gold }]}>
+              {strong ? '💥 STRONG' : '⚡ WEAK'} · ⚔️ {chore.damage_reward} DMG
+            </Text>
+          )}
         </View>
         <Text style={cm.prompt}>Did you complete this chore?</Text>
         <View style={cm.actions}>
           <Pressable
-            style={[cm.btn, { backgroundColor: C.damage, borderBottomColor: '#a03030' }, busy && { opacity: 0.5 }]}
+            style={[cm.btn, { backgroundColor: dead ? C.hp : C.damage, borderBottomColor: dead ? '#2d6e43' : '#a03030' }, busy && { opacity: 0.5 }]}
             disabled={busy}
             onPress={onConfirm}
           >
-            <Text style={cm.btnTxt}>{busy ? 'ATTACKING…' : 'CONFIRM ATTACK ⚔️'}</Text>
+            <Text style={cm.btnTxt}>{busy ? '…' : dead ? 'CONFIRM REVIVE ✚' : 'CONFIRM ATTACK ⚔️'}</Text>
           </Pressable>
           <Pressable style={cm.cancelBtn} onPress={onClose} disabled={busy}><Text style={cm.cancelTxt}>CANCEL</Text></Pressable>
         </View>
@@ -285,42 +280,64 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
     } catch { /* silent */ }
   }
 
-  // Tapping a chore = the current player completes it → damage their own monster
+  // Tapping a chore = the current player completes it.
+  // While alive: damage your monster. While defeated: it counts toward reviving.
   async function executeAttack(chore: Chore) {
     if (!profile) return;
     setBusy(true);
 
-    const damage       = calcTotalDamage(chore.damage_reward, profile, playerItems);
-    const newMonsterHp = Math.max(0, profile.monster_hp - damage);
-    const defeated     = newMonsterHp === 0;
-    const updates: Record<string, any> = { monster_hp: newMonsterHp };
+    const dead = profile.player_hp <= 0;
+    let defeated = false;
 
-    // Enemy defeated → advance floor, award xp + gold
-    if (newMonsterHp === 0 && profile.tower_floor < 20) {
-      const nextFloor = profile.tower_floor + 1;
-      const { data: fd } = await supabase
-        .from('tower_floors').select('monster_max_hp, xp_reward, money_reward')
-        .eq('floor', nextFloor).single();
-      if (fd) {
-        const newXp = profile.xp + fd.xp_reward;
-        updates.tower_floor = nextFloor;
-        updates.monster_hp  = fd.monster_max_hp;
-        updates.xp          = newXp;
-        updates.level       = calcLevel(newXp);
-        updates.points      = profile.points + fd.money_reward;
+    if (dead) {
+      // Revive: 2 chores to come back to life
+      const prog = (profile.revive_progress ?? 0) + 1;
+      const updates: Record<string, any> = prog >= 2
+        ? { revive_progress: 0, player_hp: calcMaxHp(profile, playerItems), revives: (profile.revives ?? 0) + 1 }
+        : { revive_progress: prog };
+      updates.chores_done = (profile.chores_done ?? 0) + 1;
+      await supabase.from('profiles').update(updates).eq('id', profile.id);
+    } else {
+      const damage       = calcTotalDamage(chore.damage_reward, profile, playerItems);
+      const newMonsterHp = Math.max(0, profile.monster_hp - damage);
+      defeated = newMonsterHp === 0;
+      const updates: Record<string, any> = { monster_hp: newMonsterHp };
+      updates.chores_done = (profile.chores_done ?? 0) + 1;
+      if (defeated) updates.monsters_defeated = (profile.monsters_defeated ?? 0) + 1;
+
+      if (defeated) {
+        // Award the defeated floor's xp + gold, then advance (floor 10 repeats).
+        const { data: cur } = await supabase
+          .from('tower_floors').select('xp_reward, money_reward')
+          .eq('floor', profile.tower_floor).single();
+        const newXp    = profile.xp + (cur?.xp_reward ?? 0);
+        const newLevel = calcLevel(newXp);
+        updates.xp     = newXp;
+        updates.points = profile.points + (cur?.money_reward ?? 0);
+        if (newLevel > profile.level) {
+          updates.level         = newLevel;
+          updates.player_max_hp = maxHpForLevel(newLevel);
+          updates.player_hp     = maxHpForLevel(newLevel); // heal to full on level up
+        }
+        const nextFloor = Math.min(profile.tower_floor + 1, MAX_FLOOR);
+        const { data: nf } = await supabase
+          .from('tower_floors').select('monster_max_hp').eq('floor', nextFloor).single();
+        if (nf) {
+          updates.tower_floor = nextFloor;
+          updates.monster_hp  = nf.monster_max_hp;
+        }
       }
+      await supabase.from('profiles').update(updates).eq('id', profile.id);
     }
 
-    await supabase.from('profiles').update(updates).eq('id', profile.id);
-
-    // Always log the attack (solo logs are scoped by profile); notify family if in one.
+    // Always log the chore; notify family if in one.
     await supabase.from('chore_log').insert({
       household_id: profile.household_id ?? null,
       profile_id:   profile.id,
       chore_title:  chore.title,
-      damage,
+      damage:       dead ? 0 : calcTotalDamage(chore.damage_reward, profile, playerItems),
     } as any);
-    if (profile.household_id) await notifyFamily(chore, damage);
+    if (profile.household_id) await notifyFamily(chore, dead ? 0 : calcTotalDamage(chore.damage_reward, profile, playerItems));
 
     await refreshProfile();
     setBusy(false);
@@ -333,6 +350,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
   const strong = chores.filter(c => c.recurrence === 'weekly' || c.recurrence === 'special');
   // Leaders manage the family's chores; solo players (no household) manage their own.
   const canManage = !!profile && (profile.is_leader || !profile.household_id);
+  const isDead    = !!profile && profile.player_hp <= 0;
 
   function renderChore(item: Chore) {
     return (
@@ -386,8 +404,10 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
             </Pressable>
           )}
           <View>
-            <Text style={s.headerTitle}>⚔️ ATTACK</Text>
-            <Text style={s.headerSub}>TAP A CHORE TO STRIKE</Text>
+            <Text style={s.headerTitle}>{isDead ? '💀 DEFEATED' : '⚔️ ATTACK'}</Text>
+            <Text style={s.headerSub}>
+              {isDead ? `DO ${2 - (profile.revive_progress ?? 0)} CHORE(S) TO REVIVE` : 'TAP A CHORE TO STRIKE'}
+            </Text>
           </View>
         </View>
         <View style={s.headerRight}>
@@ -428,6 +448,8 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
       <ConfirmChoreModal
         chore={selected}
         busy={busy}
+        dead={isDead}
+        reviveProgress={profile.revive_progress ?? 0}
         onClose={() => setSelected(null)}
         onConfirm={() => selected && executeAttack(selected)}
       />

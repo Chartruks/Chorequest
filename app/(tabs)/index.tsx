@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import StoryModal from '../../components/StoryModal';
+import { ACHIEVEMENTS, achievementProgress } from '../../lib/achievements';
 import {
   calcMaxHp, calcMonsterAttack, getEquippedBonus,
   nextAttackCountdown, xpForNextLevel,
@@ -29,35 +30,67 @@ const SLOT_SIZE = Math.floor((SW - 28 - 32) / 5);
 const ARENA_BG     = require('../../assets/backgrounds/1/3.png');
 const CHARACTER_BG = require('../../assets/verticalbgs/1/1.png');
 
-// ── Enemy animation ──────────────────────────────────────────────
-const ENEMY_FRAMES = [
-  require('../../assets/enemies/1/frame_0000.png'),
-  require('../../assets/enemies/1/frame_0001.png'),
-  require('../../assets/enemies/1/frame_0002.png'),
-  require('../../assets/enemies/1/frame_0003.png'),
-  require('../../assets/enemies/1/frame_0004.png'),
-  require('../../assets/enemies/1/frame_0005.png'),
-  require('../../assets/enemies/1/frame_0006.png'),
-  require('../../assets/enemies/1/frame_0007.png'),
-  require('../../assets/enemies/1/frame_0008.png'),
-  require('../../assets/enemies/1/frame_0009.png'),
-  require('../../assets/enemies/1/frame_0010.png'),
-  require('../../assets/enemies/1/frame_0011.png'),
-  require('../../assets/enemies/1/frame_0012.png'),
-  require('../../assets/enemies/1/frame_0013.png'),
-  require('../../assets/enemies/1/frame_0014.png'),
-  require('../../assets/enemies/1/frame_0015.png'),
-];
+// ── Enemy animations (one folder per enemy; add more folders as art lands) ──
+const ENEMY_SPRITES: Record<number, any[]> = {
+  1: [
+    require('../../assets/enemies/1/frame_0000.png'), require('../../assets/enemies/1/frame_0001.png'),
+    require('../../assets/enemies/1/frame_0002.png'), require('../../assets/enemies/1/frame_0003.png'),
+    require('../../assets/enemies/1/frame_0004.png'), require('../../assets/enemies/1/frame_0005.png'),
+    require('../../assets/enemies/1/frame_0006.png'), require('../../assets/enemies/1/frame_0007.png'),
+    require('../../assets/enemies/1/frame_0008.png'), require('../../assets/enemies/1/frame_0009.png'),
+    require('../../assets/enemies/1/frame_0010.png'), require('../../assets/enemies/1/frame_0011.png'),
+    require('../../assets/enemies/1/frame_0012.png'), require('../../assets/enemies/1/frame_0013.png'),
+    require('../../assets/enemies/1/frame_0014.png'), require('../../assets/enemies/1/frame_0015.png'),
+  ],
+  2: [
+    require('../../assets/enemies/2/frame_0000.png'), require('../../assets/enemies/2/frame_0001.png'),
+    require('../../assets/enemies/2/frame_0002.png'), require('../../assets/enemies/2/frame_0003.png'),
+    require('../../assets/enemies/2/frame_0004.png'), require('../../assets/enemies/2/frame_0005.png'),
+    require('../../assets/enemies/2/frame_0006.png'), require('../../assets/enemies/2/frame_0007.png'),
+    require('../../assets/enemies/2/frame_0008.png'), require('../../assets/enemies/2/frame_0009.png'),
+    require('../../assets/enemies/2/frame_0010.png'), require('../../assets/enemies/2/frame_0011.png'),
+    require('../../assets/enemies/2/frame_0012.png'), require('../../assets/enemies/2/frame_0013.png'),
+    require('../../assets/enemies/2/frame_0014.png'), require('../../assets/enemies/2/frame_0015.png'),
+  ],
+  3: [
+    require('../../assets/enemies/3/frame_0000.png'), require('../../assets/enemies/3/frame_0001.png'),
+    require('../../assets/enemies/3/frame_0002.png'), require('../../assets/enemies/3/frame_0003.png'),
+    require('../../assets/enemies/3/frame_0004.png'), require('../../assets/enemies/3/frame_0005.png'),
+    require('../../assets/enemies/3/frame_0006.png'), require('../../assets/enemies/3/frame_0007.png'),
+    require('../../assets/enemies/3/frame_0008.png'), require('../../assets/enemies/3/frame_0009.png'),
+    require('../../assets/enemies/3/frame_0010.png'), require('../../assets/enemies/3/frame_0011.png'),
+    require('../../assets/enemies/3/frame_0012.png'), require('../../assets/enemies/3/frame_0013.png'),
+    require('../../assets/enemies/3/frame_0014.png'), require('../../assets/enemies/3/frame_0015.png'),
+  ],
+  4: [
+    require('../../assets/enemies/4/frame_0000.png'), require('../../assets/enemies/4/frame_0001.png'),
+    require('../../assets/enemies/4/frame_0002.png'), require('../../assets/enemies/4/frame_0003.png'),
+    require('../../assets/enemies/4/frame_0004.png'), require('../../assets/enemies/4/frame_0005.png'),
+    require('../../assets/enemies/4/frame_0006.png'), require('../../assets/enemies/4/frame_0007.png'),
+    require('../../assets/enemies/4/frame_0008.png'), require('../../assets/enemies/4/frame_0009.png'),
+    require('../../assets/enemies/4/frame_0010.png'), require('../../assets/enemies/4/frame_0011.png'),
+    require('../../assets/enemies/4/frame_0012.png'), require('../../assets/enemies/4/frame_0013.png'),
+    require('../../assets/enemies/4/frame_0014.png'), require('../../assets/enemies/4/frame_0015.png'),
+  ],
+};
+const ENEMY_FOLDERS = Object.keys(ENEMY_SPRITES).length; // available art
 const ENEMY_FRAME_MS = Math.round(2000 / 16); // 125ms
 
-function EnemySprite() {
+function framesForFloor(floor: number): any[] {
+  const idx = ((floor - 1) % ENEMY_FOLDERS) + 1;   // cycle through available art
+  return ENEMY_SPRITES[idx];
+}
+
+function EnemySprite({ floor }: { floor: number }) {
+  const frames = framesForFloor(floor);
   const [frame, setFrame] = useState(0);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    ref.current = setInterval(() => setFrame(f => (f + 1) % ENEMY_FRAMES.length), ENEMY_FRAME_MS);
+    setFrame(0);
+    ref.current = setInterval(() => setFrame(f => (f + 1) % frames.length), ENEMY_FRAME_MS);
     return () => { if (ref.current) clearInterval(ref.current); };
-  }, []);
-  return <Image source={ENEMY_FRAMES[frame]} style={s.enemyImage} resizeMode="contain" />;
+  }, [floor]);
+  return <Image source={frames[frame]} style={s.enemyImage} resizeMode="contain" />;
 }
 
 // ── Character idle animation ─────────────────────────────────────
@@ -141,14 +174,16 @@ export default function GameScreen() {
     const { data: fd } = await supabase.from('tower_floors').select('*').eq('floor', fp.tower_floor).single();
     if (!fd) return;
 
-    // monster attack tick
+    // monster attack tick — damage sticks; if it hits 0 the hero is defeated
+    // (revive by doing 2 chores), no auto-heal.
     const attack = calcMonsterAttack(fp, fd);
     if (attack.ticks > 0) {
-      await supabase.from('profiles').update(
-        attack.newHp <= 0
-          ? { player_hp: fp.player_max_hp, monster_hp: Math.floor(fd.monster_max_hp * 0.5), last_monster_attack: attack.newLastAttack.toISOString() }
-          : { player_hp: attack.newHp, last_monster_attack: attack.newLastAttack.toISOString() }
-      ).eq('id', profile.id);
+      const justDied = fp.player_hp > 0 && attack.newHp <= 0;
+      await supabase.from('profiles').update({
+        player_hp: attack.newHp,
+        last_monster_attack: attack.newLastAttack.toISOString(),
+        ...(justDied ? { deaths: (fp.deaths ?? 0) + 1 } : {}),
+      }).eq('id', profile.id);
       await refreshProfile();
     }
 
@@ -275,10 +310,11 @@ export default function GameScreen() {
             await supabase.from('player_items').delete().eq('profile_id', profile.id);
             await supabase.from('profiles').update({
               level: 1, xp: 0, points: 0, tower_floor: 1,
-              player_hp: 100, player_max_hp: 100,
+              player_hp: 5, player_max_hp: 5,
               monster_hp: f1?.monster_max_hp ?? 1,
+              revive_progress: 0,
               last_monster_attack: new Date().toISOString(),
-            }).eq('id', profile.id);
+            } as any).eq('id', profile.id);
             await refreshProfile();
             await load();
             setResetting(false);
@@ -298,9 +334,11 @@ export default function GameScreen() {
   }, [profile]);
 
   function handleDefeat() {
+    // Close the quest sheet first, then show the story once it has fully
+    // dismissed — stacking/closing modals at the same time freezes touches in RN.
     setShowQuests(false);
     setStoryText(undefined);     // placeholder defeat-snippet story
-    setShowStory(true);
+    setTimeout(() => setShowStory(true), 450);
   }
 
   useFocusEffect(useCallback(() => { load(); }, [profile?.id]));
@@ -312,6 +350,15 @@ export default function GameScreen() {
     const t = setInterval(tick, 30_000);
     return () => clearInterval(t);
   }, [profile, floor]);
+
+  // Keep the displayed floor (denominator of monster HP) in sync with the
+  // profile after an attack advances the floor — without a full reload.
+  useEffect(() => {
+    if (!profile?.tower_floor) return;
+    if (floor && floor.floor === profile.tower_floor) return;
+    supabase.from('tower_floors').select('*').eq('floor', profile.tower_floor).single()
+      .then(({ data }) => { if (data) setFloor(data); });
+  }, [profile?.tower_floor]);
 
   if (loading || !floor) {
     return (
@@ -330,6 +377,7 @@ export default function GameScreen() {
   const hpPct   = profile.player_hp / Math.max(1, maxHp);
   const bonus   = getEquippedBonus(playerItems);
   const equipped = playerItems.filter((pi: any) => pi.equipped);
+  const dead    = profile.player_hp <= 0;
 
   return (
     <View style={s.container}>
@@ -341,7 +389,7 @@ export default function GameScreen() {
           style={[s.arenaSection, { paddingTop: insets.top }]}
           onLayout={e => setArenaHeight(e.nativeEvent.layout.height)}
         >
-          <EnemySprite />
+          <EnemySprite floor={profile.tower_floor} />
           {/* Monster name rises into arena when attack modal opens */}
           <Animated.View
             pointerEvents="none"
@@ -385,8 +433,8 @@ export default function GameScreen() {
                   <Text style={s.badgeText}>{pendingCount > 9 ? '9+' : pendingCount}</Text>
                 </View>
               )}
-              <Text style={s.attackEmoji}>⚔️</Text>
-              <Text style={s.attackLabel}>ATTACK</Text>
+              <Text style={s.attackEmoji}>{dead ? '💀' : '⚔️'}</Text>
+              <Text style={s.attackLabel}>{dead ? 'REVIVE' : 'ATTACK'}</Text>
             </Pressable>
           </View>
         </View>
@@ -593,11 +641,32 @@ export default function GameScreen() {
               <Pressable onPress={() => setShowAchievements(false)} style={s.guildBack}>
                 <Text style={s.guildBackTxt}>←</Text>
               </Pressable>
-              <Text style={[s.guildTitle, { color: C.gold }]}>🏆 FEATS</Text>
+              <Text style={[s.guildTitle, { color: C.gold, flex: 1 }]}>🏆 FEATS</Text>
+              <Text style={s.featCount}>{ACHIEVEMENTS.filter(a => achievementProgress(profile, a).unlocked).length}/{ACHIEVEMENTS.length}</Text>
             </View>
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>COMING SOON</Text>
-            </View>
+            <ScrollView contentContainerStyle={s.featList}>
+              {ACHIEVEMENTS.map(a => {
+                const { value, unlocked } = achievementProgress(profile, a);
+                const pct = Math.min(1, value / a.target);
+                return (
+                  <View key={a.id} style={[s.featRow, !unlocked && { opacity: 0.55 }]}>
+                    <Text style={s.featIcon}>{unlocked ? a.icon : '🔒'}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.featTitle}>{a.title.toUpperCase()}</Text>
+                      <Text style={s.featDesc}>{a.desc}</Text>
+                      {!unlocked && (
+                        <View style={s.featTrack}>
+                          <View style={[s.featFill, { width: `${pct * 100}%` as any }]} />
+                        </View>
+                      )}
+                    </View>
+                    {unlocked
+                      ? <Text style={s.featDone}>✓</Text>
+                      : <Text style={s.featProg}>{Math.min(value, a.target)}/{a.target}</Text>}
+                  </View>
+                );
+              })}
+            </ScrollView>
           </SafeAreaView>
         )}
       </Modal>
@@ -779,6 +848,22 @@ const s = StyleSheet.create({
   guildBack:    { width: 36, height: 36, backgroundColor: C.card, borderRadius: 10, borderWidth: 2, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
   guildBackTxt: { fontFamily: F.pixel, fontSize: 14, color: C.textMuted, lineHeight: 20 },
   guildTitle:   { fontFamily: F.pixel, fontSize: 12, color: '#e8b432', letterSpacing: 1 },
+  // ── Feats (achievements) ──
+  featCount: { fontFamily: F.pixel, fontSize: 9, color: C.gold },
+  featList:  { padding: 14, gap: 10 },
+  featRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: C.card, borderWidth: 2, borderColor: C.border,
+    borderRadius: 12, padding: 12,
+  },
+  featIcon:  { fontSize: 26, width: 32, textAlign: 'center' },
+  featTitle: { fontFamily: F.pixel, fontSize: 9, color: C.text, marginBottom: 3 },
+  featDesc:  { fontFamily: F.body, fontSize: 15, color: C.textMuted },
+  featTrack: { height: 6, backgroundColor: C.cardAlt, borderRadius: 3, overflow: 'hidden', marginTop: 6 },
+  featFill:  { height: 6, backgroundColor: C.gold, borderRadius: 3 },
+  featDone:  { fontFamily: F.pixel, fontSize: 12, color: C.hp },
+  featProg:  { fontFamily: F.pixel, fontSize: 7, color: C.textMuted },
+
   guildCodeBox: { margin: 16, backgroundColor: C.card, borderWidth: 2, borderColor: '#e8b432', borderRadius: 14, padding: 16, alignItems: 'center', gap: 6 },
   guildCodeLbl: { fontFamily: F.pixel, fontSize: 7, color: C.textMuted, letterSpacing: 2 },
   guildCode:    { fontFamily: F.pixel, fontSize: 22, color: '#e8b432', letterSpacing: 6 },

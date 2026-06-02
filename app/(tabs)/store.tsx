@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
+import { maxHpForLevel } from '../../lib/towerEngine';
 import { C, F } from '../../constants/theme';
 
 type StoreItem  = Database['public']['Tables']['store_items']['Row'];
@@ -120,17 +121,22 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
     }
     setBuying(item.id);
     if (item.item_type === 'consumable') {
-      const newHp = Math.min(profile.player_max_hp, profile.player_hp + item.heal_amount);
-      await supabase.from('profiles').update({ points: profile.points - item.cost, player_hp: newHp }).eq('id', profile.id);
+      // Heal capped at level max + equipped-armor bonus.
+      const equipHp = owned
+        .filter(o => o.equipped)
+        .reduce((sum, o) => sum + (items.find(i => i.id === o.item_id)?.hp_bonus ?? 0), 0);
+      const maxHp = maxHpForLevel(profile.level) + equipHp;
+      const newHp = Math.min(maxHp, profile.player_hp + item.heal_amount);
+      await supabase.from('profiles').update({ points: profile.points - item.cost, player_hp: newHp, gold_spent: (profile.gold_spent ?? 0) + item.cost } as any).eq('id', profile.id);
       await refreshProfile();
       Alert.alert('USED!', `Restored ${item.heal_amount > 900 ? 'all' : item.heal_amount} HP.`);
     } else {
+      // Equip: unequip any same-type item, then equip this one. Max HP from gear
+      // is computed dynamically (calcMaxHp), so we don't bump player_max_hp here.
       const sameType = owned.filter(o => items.find(i => i.id === o.item_id)?.item_type === item.item_type && o.equipped);
       for (const old of sameType) await supabase.from('player_items').update({ equipped: false }).eq('id', old.id);
       await supabase.from('player_items').upsert({ profile_id: profile.id, item_id: item.id, equipped: true }, { onConflict: 'profile_id,item_id' });
-      const upd: Record<string, any> = { points: profile.points - item.cost };
-      if (item.hp_bonus > 0) { upd.player_max_hp = profile.player_max_hp + item.hp_bonus; upd.player_hp = Math.min(profile.player_hp + item.hp_bonus, profile.player_max_hp + item.hp_bonus); }
-      await supabase.from('profiles').update(upd).eq('id', profile.id);
+      await supabase.from('profiles').update({ points: profile.points - item.cost, gold_spent: (profile.gold_spent ?? 0) + item.cost } as any).eq('id', profile.id);
       await refreshProfile();
       const { data: pi } = await supabase.from('player_items').select('id, item_id, equipped').eq('profile_id', profile.id);
       setOwned(pi ?? []);
@@ -145,7 +151,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
       return;
     }
     setBuying(reward.id);
-    await supabase.from('profiles').update({ points: profile.points - reward.points_cost }).eq('id', profile.id);
+    await supabase.from('profiles').update({ points: profile.points - reward.points_cost, gold_spent: (profile.gold_spent ?? 0) + reward.points_cost } as any).eq('id', profile.id);
     await refreshProfile();
     Alert.alert('REDEEMED! 🎉', `"${reward.title}" has been redeemed. Claim your real-world reward!`);
     setBuying(null);
