@@ -10,19 +10,21 @@ import { View } from 'react-native';
 import { C } from '../constants/theme';
 
 function RouteGuard({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { profile, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
-    if (!session && !inAuthGroup) {
+    // You're "in" once an active hero (profile) is loaded — works for both
+    // email leaders and code-only family members.
+    if (!profile && !inAuthGroup) {
       router.replace('/(auth)/sign-in');
-    } else if (session && inAuthGroup) {
+    } else if (profile && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [session, loading, segments]);
+  }, [profile, loading, segments]);
 
   return <>{children}</>;
 }

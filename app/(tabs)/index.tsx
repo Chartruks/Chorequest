@@ -89,7 +89,7 @@ function IdleSprite() {
 
 // ── Main screen ──────────────────────────────────────────────────
 export default function GameScreen() {
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, signOut } = useAuth();
 
   // tower
   const [floor, setFloor]       = useState<TowerFloor | null>(null);
@@ -111,6 +111,7 @@ export default function GameScreen() {
   const [showBag,          setShowBag]          = useState(false);
   const [showLogs,         setShowLogs]         = useState(false);
   const [logs,             setLogs]             = useState<any[]>([]);
+  const [creating,         setCreating]         = useState(false);
 
   // measured height of the arena sprite section — quest sheet opens to just below it,
   // covering the opaque info row (monster stats + attack button)
@@ -147,26 +148,23 @@ export default function GameScreen() {
 
     setFloor(fd);
 
-    const queries: Promise<any>[] = [
+    const hid = profile.household_id;
+    const [{ data: pi }, { data: fam }, { data: ch }, hh] = await Promise.all([
       supabase.from('player_items').select('*, store_items(*)').eq('profile_id', profile.id),
-    ];
-    if (profile.household_id) {
-      queries.push(
-        supabase.from('profiles').select('*').eq('household_id', profile.household_id).neq('id', profile.id),
-        supabase.from('chores').select('id').eq('household_id', profile.household_id).eq('status', 'pending'),
-        supabase.from('households').select('invite_code').eq('id', profile.household_id).single(),
-      );
-    }
-
-    const results = await Promise.all(queries);
-    setPlayerItems(results[0]?.data ?? []);
-    if (profile.household_id) {
-      setFamily(results[1]?.data ?? []);
-      setPendingCount(results[2]?.data?.length ?? 0);
-      if (results[3]?.data) {
-        setInviteCode((results[3].data as any).invite_code ?? '');
-      }
-    }
+      hid
+        ? supabase.from('profiles').select('*').eq('household_id', hid).neq('id', profile.id)
+        : Promise.resolve({ data: [] as any[] }),
+      hid
+        ? supabase.from('chores').select('id').eq('household_id', hid)
+        : supabase.from('chores').select('id').is('household_id', null).eq('created_by', profile.id),
+      hid
+        ? supabase.from('households').select('invite_code').eq('id', hid).single()
+        : Promise.resolve({ data: null }),
+    ]);
+    setPlayerItems(pi ?? []);
+    setFamily(fam ?? []);
+    setPendingCount(ch?.length ?? 0);
+    setInviteCode(hh?.data ? ((hh.data as any).invite_code ?? '') : '');
     setLoading(false);
   }
 
@@ -190,13 +188,13 @@ export default function GameScreen() {
   }
 
   async function openLogs() {
-    if (!profile?.household_id) return;
+    if (!profile) return;
     setShowLogs(true);
-    const { data } = await supabase
-      .from('chore_log').select('*')
-      .eq('household_id', profile.household_id)
-      .order('created_at', { ascending: false })
-      .limit(300);
+    let q = supabase.from('chore_log').select('*');
+    q = profile.household_id
+      ? q.eq('household_id', profile.household_id)
+      : q.is('household_id', null).eq('profile_id', profile.id);
+    const { data } = await q.order('created_at', { ascending: false }).limit(300);
     setLogs(data ?? []);
   }
 
@@ -226,6 +224,34 @@ export default function GameScreen() {
     }
   }
 
+  // Create a guild (household) from the Guild tab. Migrates any solo chores/logs into it.
+  async function createHousehold() {
+    if (!profile) return;
+    setCreating(true);
+    const code = Array.from({ length: 6 }, () =>
+      'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]
+    ).join('');
+    const { data: hh, error } = await supabase
+      .from('households')
+      .insert({
+        name: `${(profile.username ?? 'MY').toUpperCase()} GUILD`,
+        invite_code: code,
+        created_by: profile.id,
+      } as any)
+      .select('id, invite_code')
+      .single();
+    if (!error && hh) {
+      await supabase.from('profiles').update({ household_id: hh.id, is_leader: true }).eq('id', profile.id);
+      // Bring the player's solo chores + logs into the new guild
+      await supabase.from('chores').update({ household_id: hh.id }).is('household_id', null).eq('created_by', profile.id);
+      await supabase.from('chore_log').update({ household_id: hh.id }).is('household_id', null).eq('profile_id', profile.id);
+      setInviteCode((hh as any).invite_code);
+      await refreshProfile();
+      await load();
+    }
+    setCreating(false);
+  }
+
   useFocusEffect(useCallback(() => { load(); }, [profile?.id]));
 
   useEffect(() => {
@@ -235,18 +261,6 @@ export default function GameScreen() {
     const t = setInterval(tick, 30_000);
     return () => clearInterval(t);
   }, [profile, floor]);
-
-  if (!profile?.household_id) {
-    return (
-      <SafeAreaView style={s.container}>
-        <View style={s.empty}>
-          <Text style={s.emptyEmoji}>🏰</Text>
-          <Text style={s.emptyTitle}>NO HOUSEHOLD</Text>
-          <Text style={s.emptyBody}>Join via the web dashboard.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   if (loading || !floor) {
     return (
@@ -587,12 +601,28 @@ export default function GameScreen() {
                 </ScrollView>
               )
             ) : (
-              inviteCode ? (
-                <View style={s.guildCodeBox}>
-                  <Text style={s.guildCodeLbl}>FAMILY CODE</Text>
-                  <Text style={s.guildCode}>{inviteCode}</Text>
-                </View>
-              ) : null
+              <View style={{ flex: 1 }}>
+                {inviteCode ? (
+                  <View style={s.guildCodeBox}>
+                    <Text style={s.guildCodeLbl}>FAMILY CODE</Text>
+                    <Text style={s.guildCode}>{inviteCode}</Text>
+                  </View>
+                ) : (
+                  <View style={s.guildCreateBox}>
+                    <Text style={s.guildCreateHint}>You&apos;re playing solo. Create a guild to invite family and share quests.</Text>
+                    <Pressable
+                      style={({ pressed }) => [s.setupBtn, creating && { opacity: 0.5 }, pressed && s.setupBtnPressed]}
+                      onPress={createHousehold}
+                      disabled={creating}
+                    >
+                      <Text style={s.setupBtnText}>{creating ? 'CREATING…' : '＋ CREATE GUILD'}</Text>
+                    </Pressable>
+                  </View>
+                )}
+                <Pressable style={s.signOutBtn} onPress={signOut}>
+                  <Text style={s.signOutText}>SIGN OUT</Text>
+                </Pressable>
+              </View>
             )}
           </SafeAreaView>
         )}
@@ -615,6 +645,15 @@ const s = StyleSheet.create({
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontFamily: F.pixel, fontSize: 12, color: C.text, marginBottom: 10 },
   emptyBody:  { fontFamily: F.body, fontSize: 18, color: C.textMuted },
+
+  // Guild creation (shown in the Guild tab when playing solo)
+  setupBtn:        { backgroundColor: C.primary, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 28, alignItems: 'center', borderBottomWidth: 4, borderBottomColor: C.primaryDark },
+  setupBtnPressed: { borderBottomWidth: 0, marginTop: 4 },
+  setupBtnText:    { fontFamily: F.pixel, fontSize: 10, color: C.bg, letterSpacing: 1 },
+  guildCreateBox:  { margin: 16, gap: 16, alignItems: 'center' },
+  guildCreateHint: { fontFamily: F.body, fontSize: 17, color: C.textMuted, textAlign: 'center', lineHeight: 24 },
+  signOutBtn:      { marginTop: 'auto', margin: 16, paddingVertical: 14, alignItems: 'center', borderWidth: 2, borderColor: C.border, borderRadius: 12 },
+  signOutText:     { fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 },
 
   // ── Arena sprite section ──
   arenaSection: {

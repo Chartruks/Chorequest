@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 import { C, F } from '../../constants/theme';
 
-type Step = 'code' | 'profile';
+type Step = 'code' | 'pick' | 'create';
+type Hero = { id: string; username: string | null; character_type: string; level: number };
 
 const CHARACTERS = [
   { emoji: '🧑', label: 'WARRIOR' },
@@ -15,81 +17,99 @@ const CHARACTERS = [
 ];
 
 export default function JoinFamily() {
-  const [step, setStep]             = useState<Step>('code');
-  const [code, setCode]             = useState('');
-  const [household, setHousehold]   = useState<{ id: string; name: string } | null>(null);
-  const [name, setName]             = useState('');
-  const [character, setCharacter]   = useState(CHARACTERS[0].emoji);
-  const [loading, setLoading]       = useState(false);
+  const { setActiveProfile } = useAuth();
+  const [step, setStep]           = useState<Step>('code');
+  const [code, setCode]           = useState('');
+  const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
+  const [heroes, setHeroes]       = useState<Hero[]>([]);
+  const [name, setName]           = useState('');
+  const [character, setCharacter] = useState(CHARACTERS[0].emoji);
+  const [loading, setLoading]     = useState(false);
+
+  // Make sure the device has an (anonymous) session so RLS lets us read/write.
+  async function ensureSession() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      const { error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+    }
+  }
 
   async function verifyCode() {
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) { Alert.alert('Error', 'Enter a family code.'); return; }
     setLoading(true);
-    const { data, error } = await supabase
-      .from('households')
-      .select('id, name')
-      .eq('invite_code', trimmed)
-      .single();
-    setLoading(false);
-    if (error || !data) {
+    const { data: hh, error } = await supabase
+      .from('households').select('id, name').eq('invite_code', trimmed).single();
+    if (error || !hh) {
+      setLoading(false);
       Alert.alert('CODE NOT FOUND', 'Check the code and try again.');
       return;
     }
-    setHousehold(data);
-    setStep('profile');
+    const { data: members } = await supabase
+      .from('profiles')
+      .select('id, username, character_type, level')
+      .eq('household_id', hh.id)
+      .eq('is_leader', false)
+      .order('username');
+    setLoading(false);
+    setHousehold(hh);
+    setHeroes(members ?? []);
+    setStep('pick');
   }
 
-  async function joinFamily() {
+  async function pickHero(hero: Hero) {
+    setLoading(true);
+    try {
+      await ensureSession();
+      await setActiveProfile(hero.id);   // RouteGuard navigates once profile loads
+    } catch (e: any) {
+      Alert.alert('ERROR', e?.message ?? 'Could not load hero.');
+      setLoading(false);
+    }
+  }
+
+  async function createHero() {
     if (!name.trim()) { Alert.alert('Error', 'Enter your hero name.'); return; }
     if (!household)   return;
     setLoading(true);
-
-    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
-    if (authError || !authData.user) {
-      Alert.alert('ERROR', authError?.message ?? 'Could not create account.');
+    try {
+      await ensureSession();
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          username:       name.trim(),
+          household_id:   household.id,
+          character_type: character,
+          is_leader:      false,
+        } as any)
+        .select('id')
+        .single();
+      if (error || !data) throw error ?? new Error('Could not create hero.');
+      await setActiveProfile(data.id);
+    } catch (e: any) {
+      Alert.alert('ERROR', e?.message ?? 'Could not create hero.');
       setLoading(false);
-      return;
     }
-
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id:             authData.user.id,
-      username:       name.trim(),
-      household_id:   household.id,
-      character_type: character,
-      is_leader:      false,
-      role:           'child',
-    }, { onConflict: 'id' });
-
-    if (profileError) {
-      Alert.alert('ERROR', profileError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Auth state change in AuthContext will handle navigation
-    setLoading(false);
   }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.container}>
       <ScrollView contentContainerStyle={s.inner} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        {/* Back */}
-        <Pressable onPress={() => step === 'profile' ? setStep('code') : router.back()} style={s.back}>
+        <Pressable
+          onPress={() => step === 'code' ? router.back() : step === 'create' ? setStep('pick') : setStep('code')}
+          style={s.back}
+        >
           <Text style={s.backText}>← BACK</Text>
         </Pressable>
 
-        {/* Logo */}
-        <View style={s.logoBox}>
-          <Text style={s.logoEmoji}>👨‍👩‍👧</Text>
-        </View>
+        <View style={s.logoBox}><Text style={s.logoEmoji}>👨‍👩‍👧</Text></View>
         <Text style={s.title}>JOIN A FAMILY</Text>
 
-        {step === 'code' ? (
+        {step === 'code' && (
           <>
             <Text style={s.subtitle}>ENTER THE CODE YOUR FAMILY LEADER GAVE YOU</Text>
-
             <TextInput
               style={s.input}
               placeholder="FAMILY CODE"
@@ -100,16 +120,41 @@ export default function JoinFamily() {
               autoCorrect={false}
               maxLength={12}
             />
-
-            <Pressable
-              style={({ pressed }) => [s.btn, loading && s.btnDisabled, pressed && s.btnPressed]}
-              onPress={verifyCode}
-              disabled={loading}
-            >
+            <Pressable style={({ pressed }) => [s.btn, loading && s.btnDisabled, pressed && s.btnPressed]} onPress={verifyCode} disabled={loading}>
               <Text style={s.btnText}>{loading ? 'CHECKING…' : 'VERIFY CODE →'}</Text>
             </Pressable>
           </>
-        ) : (
+        )}
+
+        {step === 'pick' && (
+          <>
+            <View style={s.householdBadge}>
+              <Text style={s.householdLabel}>JOINING</Text>
+              <Text style={s.householdName}>{household?.name.toUpperCase()}</Text>
+            </View>
+
+            {loading ? (
+              <ActivityIndicator color={C.primary} style={{ marginTop: 20 }} />
+            ) : (
+              <>
+                {heroes.length > 0 && <Text style={s.fieldLabel}>WHO ARE YOU?</Text>}
+                {heroes.map(h => (
+                  <Pressable key={h.id} style={({ pressed }) => [s.heroRow, pressed && { opacity: 0.7 }]} onPress={() => pickHero(h)}>
+                    <Text style={s.heroEmoji}>{h.character_type || '🧑'}</Text>
+                    <Text style={s.heroName}>{(h.username ?? 'HERO').toUpperCase()}</Text>
+                    <Text style={s.heroLv}>LV.{h.level}</Text>
+                  </Pressable>
+                ))}
+
+                <Pressable style={({ pressed }) => [s.newBtn, pressed && s.btnPressed]} onPress={() => setStep('create')}>
+                  <Text style={s.newBtnText}>＋ NEW HERO</Text>
+                </Pressable>
+              </>
+            )}
+          </>
+        )}
+
+        {step === 'create' && (
           <>
             <View style={s.householdBadge}>
               <Text style={s.householdLabel}>JOINING</Text>
@@ -130,23 +175,15 @@ export default function JoinFamily() {
             <Text style={s.fieldLabel}>CHOOSE YOUR CHARACTER</Text>
             <View style={s.charGrid}>
               {CHARACTERS.map(c => (
-                <Pressable
-                  key={c.emoji}
-                  style={[s.charCard, character === c.emoji && s.charCardActive]}
-                  onPress={() => setCharacter(c.emoji)}
-                >
+                <Pressable key={c.emoji} style={[s.charCard, character === c.emoji && s.charCardActive]} onPress={() => setCharacter(c.emoji)}>
                   <Text style={s.charEmoji}>{c.emoji}</Text>
                   <Text style={[s.charLabel, character === c.emoji && s.charLabelActive]}>{c.label}</Text>
                 </Pressable>
               ))}
             </View>
 
-            <Pressable
-              style={({ pressed }) => [s.btn, loading && s.btnDisabled, pressed && s.btnPressed]}
-              onPress={joinFamily}
-              disabled={loading}
-            >
-              <Text style={s.btnText}>{loading ? 'JOINING…' : 'JOIN FAMILY →'}</Text>
+            <Pressable style={({ pressed }) => [s.btn, loading && s.btnDisabled, pressed && s.btnPressed]} onPress={createHero} disabled={loading}>
+              <Text style={s.btnText}>{loading ? 'CREATING…' : 'START PLAYING →'}</Text>
             </Pressable>
           </>
         )}
@@ -190,6 +227,24 @@ const s = StyleSheet.create({
     fontFamily: F.body, fontSize: 20, marginBottom: 20, letterSpacing: 1,
   },
 
+  // Hero picker rows
+  heroRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: C.card, borderWidth: 2, borderColor: C.border,
+    borderBottomWidth: 3, borderBottomColor: C.border,
+    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 10,
+  },
+  heroEmoji: { fontSize: 30 },
+  heroName:  { flex: 1, fontFamily: F.pixel, fontSize: 10, color: C.text, letterSpacing: 1 },
+  heroLv:    { fontFamily: F.pixel, fontSize: 8, color: C.textMuted },
+
+  newBtn: {
+    backgroundColor: C.card, borderWidth: 2, borderColor: C.primary,
+    borderBottomWidth: 4, borderBottomColor: C.primaryDark, borderRadius: 12,
+    paddingVertical: 16, alignItems: 'center', marginTop: 6,
+  },
+  newBtnText: { fontFamily: F.pixel, fontSize: 10, color: C.primary, letterSpacing: 1 },
+
   charGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
   charCard: {
     flex: 1, minWidth: '28%', backgroundColor: C.card,
@@ -197,10 +252,7 @@ const s = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center', gap: 6,
     borderBottomWidth: 3, borderBottomColor: C.border,
   },
-  charCardActive: {
-    borderColor: C.primary, borderBottomColor: C.primaryDark,
-    backgroundColor: C.cardAlt,
-  },
+  charCardActive: { borderColor: C.primary, borderBottomColor: C.primaryDark, backgroundColor: C.cardAlt },
   charEmoji:      { fontSize: 32 },
   charLabel:      { fontFamily: F.pixel, fontSize: 6, color: C.textMuted, letterSpacing: 0.5 },
   charLabelActive:{ color: C.primary },

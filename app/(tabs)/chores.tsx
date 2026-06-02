@@ -66,7 +66,7 @@ function SectionHeader({ title, count }: { title: string; count: number }) {
 
 // ── Create Chore Modal ───────────────────────────────────────────
 function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated }: {
-  visible: boolean; householdId: string; createdBy: string;
+  visible: boolean; householdId: string | null; createdBy: string;
   onClose: () => void; onCreated: () => void;
 }) {
   const [selected, setSelected]  = useState<Template | null>(null);
@@ -92,7 +92,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
     if (!title.trim()) return;
     setSaving(true);
     await supabase.from('chores').insert({
-      household_id:   householdId,
+      household_id:   householdId ?? null,
       created_by:     createdBy,
       title:          title.trim(),
       category:       selected?.category ?? 'maintenance',
@@ -242,9 +242,14 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
   const [busy, setBusy]               = useState(false);
 
   async function load() {
-    if (!profile?.household_id) { setLoading(false); return; }
+    if (!profile) { setLoading(false); return; }
+    // Household chores are shared; solo players see their own (household_id null).
+    let choreQ = supabase.from('chores').select('*');
+    choreQ = profile.household_id
+      ? choreQ.eq('household_id', profile.household_id)
+      : choreQ.is('household_id', null).eq('created_by', profile.id);
     const [{ data: c }, { data: pi }] = await Promise.all([
-      supabase.from('chores').select('*').eq('household_id', profile.household_id).order('created_at', { ascending: false }),
+      choreQ.order('created_at', { ascending: false }),
       supabase.from('player_items').select('*, store_items(*)').eq('profile_id', profile.id),
     ]);
     setChores(c ?? []);
@@ -252,7 +257,7 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [profile?.household_id]);
+  useEffect(() => { load(); }, [profile?.household_id, profile?.id]);
 
   // Notify every other family member that this player attacked
   async function notifyFamily(chore: Chore, damage: number) {
@@ -307,16 +312,14 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
 
     await supabase.from('profiles').update(updates).eq('id', profile.id);
 
-    // Log the attack for the family + notify everyone
-    if (profile.household_id) {
-      await supabase.from('chore_log').insert({
-        household_id: profile.household_id,
-        profile_id:   profile.id,
-        chore_title:  chore.title,
-        damage,
-      } as any);
-      await notifyFamily(chore, damage);
-    }
+    // Always log the attack (solo logs are scoped by profile); notify family if in one.
+    await supabase.from('chore_log').insert({
+      household_id: profile.household_id ?? null,
+      profile_id:   profile.id,
+      chore_title:  chore.title,
+      damage,
+    } as any);
+    if (profile.household_id) await notifyFamily(chore, damage);
 
     await refreshProfile();
     setBusy(false);
@@ -326,6 +329,8 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
 
   const weak   = chores.filter(c => c.recurrence !== 'weekly' && c.recurrence !== 'special');
   const strong = chores.filter(c => c.recurrence === 'weekly' || c.recurrence === 'special');
+  // Leaders manage the family's chores; solo players (no household) manage their own.
+  const canManage = !!profile && (profile.is_leader || !profile.household_id);
 
   function renderChore(item: Chore) {
     return (
@@ -365,17 +370,7 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
     );
   }
 
-  if (!profile?.household_id) {
-    return (
-      <SafeAreaView style={s.container}>
-        <View style={s.empty}>
-          <Text style={s.emptyEmoji}>🏚️</Text>
-          <Text style={s.emptyTitle}>NO HOUSEHOLD</Text>
-          <Text style={s.emptyBody}>Create or join one from the web dashboard.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (!profile) return null;
 
   const Root = sheetMode ? View : SafeAreaView;
 
@@ -395,7 +390,7 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
         </View>
         <View style={s.headerRight}>
           <View style={s.moneyBadge}><Text style={s.moneyText}>💰 {profile.points}</Text></View>
-          {profile.is_leader && (
+          {canManage && (
             <Pressable style={s.addBtn} onPress={() => setShowCreate(true)}>
               <Text style={s.addBtnText}>＋</Text>
             </Pressable>
@@ -418,10 +413,10 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
         </ScrollView>
       )}
 
-      {profile.is_leader && (
+      {canManage && (
         <CreateChoreModal
           visible={showCreate}
-          householdId={profile.household_id!}
+          householdId={profile.household_id}
           createdBy={profile.id}
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); load(); }}

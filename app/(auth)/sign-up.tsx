@@ -24,7 +24,7 @@ export default function SignUp() {
       return;
     }
     if (data.user) {
-      await supabase.from('profiles').update({ username, role }).eq('id', data.user.id);
+      await supabase.from('profiles').update({ username }).eq('id', data.user.id);
     }
     setLoading(false);
     Alert.alert('TRANSMISSION SENT!', 'Check your email to confirm your agent profile.');
