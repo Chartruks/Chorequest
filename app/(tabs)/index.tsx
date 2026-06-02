@@ -3,9 +3,11 @@ import {
   Animated, ActivityIndicator, Dimensions, Image, ImageBackground,
   Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
+import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import StoryModal from '../../components/StoryModal';
 import {
   calcMaxHp, calcMonsterAttack, getEquippedBonus,
   nextAttackCountdown, xpForNextLevel,
@@ -112,6 +114,10 @@ export default function GameScreen() {
   const [showLogs,         setShowLogs]         = useState(false);
   const [logs,             setLogs]             = useState<any[]>([]);
   const [creating,         setCreating]         = useState(false);
+  const [resetting,        setResetting]        = useState(false);
+  const [showStory,        setShowStory]        = useState(false);
+  const [storyText,        setStoryText]        = useState<string | undefined>(undefined);
+  const storyShownRef = useRef(false);
 
   // measured height of the arena sprite section — quest sheet opens to just below it,
   // covering the opaque info row (monster stats + attack button)
@@ -250,6 +256,51 @@ export default function GameScreen() {
       await load();
     }
     setCreating(false);
+  }
+
+  // Reset this hero back to level 1 (wipes progression + owned gear).
+  async function resetProgress() {
+    if (!profile) return;
+    Alert.alert(
+      'RESET PROGRESS?',
+      'This sets your hero back to level 1 and clears your gold, XP, floor and items. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset', style: 'destructive',
+          onPress: async () => {
+            setResetting(true);
+            const { data: f1 } = await supabase
+              .from('tower_floors').select('monster_max_hp').eq('floor', 1).single();
+            await supabase.from('player_items').delete().eq('profile_id', profile.id);
+            await supabase.from('profiles').update({
+              level: 1, xp: 0, points: 0, tower_floor: 1,
+              player_hp: 100, player_max_hp: 100,
+              monster_hp: f1?.monster_max_hp ?? 1,
+              last_monster_attack: new Date().toISOString(),
+            }).eq('id', profile.id);
+            await refreshProfile();
+            await load();
+            setResetting(false);
+          },
+        },
+      ],
+    );
+  }
+
+  // Story popup once per launch, after the hero loads.
+  useEffect(() => {
+    if (profile && !storyShownRef.current) {
+      storyShownRef.current = true;
+      setStoryText(undefined);   // placeholder intro story
+      setShowStory(true);
+    }
+  }, [profile]);
+
+  function handleDefeat() {
+    setShowQuests(false);
+    setStoryText(undefined);     // placeholder defeat-snippet story
+    setShowStory(true);
   }
 
   useFocusEffect(useCallback(() => { load(); }, [profile?.id]));
@@ -485,7 +536,7 @@ export default function GameScreen() {
         <View style={{ flex: 1 }}>
           <Pressable style={{ height: arenaHeight }} onPress={() => setShowQuests(false)} />
           <View style={[s.choreSheet, { flex: 1 }]}>
-            {showQuests && <ChoresScreen sheetMode onClose={() => setShowQuests(false)} />}
+            {showQuests && <ChoresScreen sheetMode onClose={() => setShowQuests(false)} onDefeat={handleDefeat} />}
           </View>
         </View>
       </Modal>
@@ -619,14 +670,21 @@ export default function GameScreen() {
                     </Pressable>
                   </View>
                 )}
-                <Pressable style={s.signOutBtn} onPress={signOut}>
-                  <Text style={s.signOutText}>SIGN OUT</Text>
-                </Pressable>
+                <View style={s.guildFooter}>
+                  <Pressable style={s.resetBtn} onPress={resetProgress} disabled={resetting}>
+                    <Text style={s.resetText}>{resetting ? 'RESETTING…' : '↺ RESET PROGRESS'}</Text>
+                  </Pressable>
+                  <Pressable style={s.signOutBtn} onPress={signOut}>
+                    <Text style={s.signOutText}>SIGN OUT</Text>
+                  </Pressable>
+                </View>
               </View>
             )}
           </SafeAreaView>
         )}
       </Modal>
+
+      <StoryModal visible={showStory} body={storyText} onClose={() => setShowStory(false)} />
     </View>
   );
 
@@ -652,7 +710,10 @@ const s = StyleSheet.create({
   setupBtnText:    { fontFamily: F.pixel, fontSize: 10, color: C.bg, letterSpacing: 1 },
   guildCreateBox:  { margin: 16, gap: 16, alignItems: 'center' },
   guildCreateHint: { fontFamily: F.body, fontSize: 17, color: C.textMuted, textAlign: 'center', lineHeight: 24 },
-  signOutBtn:      { marginTop: 'auto', margin: 16, paddingVertical: 14, alignItems: 'center', borderWidth: 2, borderColor: C.border, borderRadius: 12 },
+  guildFooter:     { marginTop: 'auto', padding: 16, gap: 10 },
+  resetBtn:        { paddingVertical: 14, alignItems: 'center', borderWidth: 2, borderColor: '#8b2020', borderRadius: 12 },
+  resetText:       { fontFamily: F.pixel, fontSize: 8, color: '#ff7070', letterSpacing: 1 },
+  signOutBtn:      { paddingVertical: 14, alignItems: 'center', borderWidth: 2, borderColor: C.border, borderRadius: 12 },
   signOutText:     { fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 },
 
   // ── Arena sprite section ──

@@ -232,7 +232,7 @@ function ConfirmChoreModal({ chore, busy, onClose, onConfirm }: {
 }
 
 // ── Main Screen ──────────────────────────────────────────────────
-export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => void; sheetMode?: boolean }) {
+export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose?: () => void; sheetMode?: boolean; onDefeat?: () => void }) {
   const { profile, refreshProfile } = useAuth();
   const [chores, setChores]           = useState<Chore[]>([]);
   const [playerItems, setPlayerItems] = useState<PlayerItem[]>([]);
@@ -292,6 +292,7 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
 
     const damage       = calcTotalDamage(chore.damage_reward, profile, playerItems);
     const newMonsterHp = Math.max(0, profile.monster_hp - damage);
+    const defeated     = newMonsterHp === 0;
     const updates: Record<string, any> = { monster_hp: newMonsterHp };
 
     // Enemy defeated → advance floor, award xp + gold
@@ -324,7 +325,8 @@ export default function ChoresScreen({ onClose, sheetMode }: { onClose?: () => v
     await refreshProfile();
     setBusy(false);
     setSelected(null);
-    load();
+    await load();
+    if (defeated && onDefeat) onDefeat();   // parent shows a story snippet
   }
 
   const weak   = chores.filter(c => c.recurrence !== 'weekly' && c.recurrence !== 'special');

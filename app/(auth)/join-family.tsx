@@ -3,18 +3,11 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Sc
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import CharacterPicker from '../../components/CharacterPicker';
 import { C, F } from '../../constants/theme';
 
 type Step = 'code' | 'pick' | 'create';
 type Hero = { id: string; username: string | null; character_type: string; level: number };
-
-const CHARACTERS = [
-  { emoji: '🧑', label: 'WARRIOR' },
-  { emoji: '🧙', label: 'MAGE'    },
-  { emoji: '🏹', label: 'RANGER'  },
-  { emoji: '🛡️', label: 'KNIGHT'  },
-  { emoji: '🧝', label: 'ELF'     },
-];
 
 export default function JoinFamily() {
   const { setActiveProfile } = useAuth();
@@ -23,7 +16,7 @@ export default function JoinFamily() {
   const [household, setHousehold] = useState<{ id: string; name: string } | null>(null);
   const [heroes, setHeroes]       = useState<Hero[]>([]);
   const [name, setName]           = useState('');
-  const [character, setCharacter] = useState(CHARACTERS[0].emoji);
+  const [character, setCharacter] = useState('1');
   const [loading, setLoading]     = useState(false);
 
   // Make sure the device has an (anonymous) session so RLS lets us read/write.
@@ -140,7 +133,7 @@ export default function JoinFamily() {
                 {heroes.length > 0 && <Text style={s.fieldLabel}>WHO ARE YOU?</Text>}
                 {heroes.map(h => (
                   <Pressable key={h.id} style={({ pressed }) => [s.heroRow, pressed && { opacity: 0.7 }]} onPress={() => pickHero(h)}>
-                    <Text style={s.heroEmoji}>{h.character_type || '🧑'}</Text>
+                    <Text style={s.heroEmoji}>🧑</Text>
                     <Text style={s.heroName}>{(h.username ?? 'HERO').toUpperCase()}</Text>
                     <Text style={s.heroLv}>LV.{h.level}</Text>
                   </Pressable>
@@ -173,14 +166,7 @@ export default function JoinFamily() {
             />
 
             <Text style={s.fieldLabel}>CHOOSE YOUR CHARACTER</Text>
-            <View style={s.charGrid}>
-              {CHARACTERS.map(c => (
-                <Pressable key={c.emoji} style={[s.charCard, character === c.emoji && s.charCardActive]} onPress={() => setCharacter(c.emoji)}>
-                  <Text style={s.charEmoji}>{c.emoji}</Text>
-                  <Text style={[s.charLabel, character === c.emoji && s.charLabelActive]}>{c.label}</Text>
-                </Pressable>
-              ))}
-            </View>
+            <CharacterPicker value={character} onChange={setCharacter} />
 
             <Pressable style={({ pressed }) => [s.btn, loading && s.btnDisabled, pressed && s.btnPressed]} onPress={createHero} disabled={loading}>
               <Text style={s.btnText}>{loading ? 'CREATING…' : 'START PLAYING →'}</Text>

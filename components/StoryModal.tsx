@@ -1,33 +1,26 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CHAPTER_TITLES, STORY_EVENTS } from '../lib/storyEngine';
-import { Database } from '../types/database';
-
-type StoryEvent = Database['public']['Tables']['story_events']['Row'];
+import { C, F } from '../constants/theme';
 
 interface Props {
-  event: StoryEvent;
-  onDismiss: () => void;
+  visible: boolean;
+  title?: string;
+  body?: string;
+  onClose: () => void;
 }
 
-export default function StoryModal({ event, onDismiss }: Props) {
-  const def = STORY_EVENTS.find(e => e.key === event.event_key);
-
+// Centered, game-styled story popup. Content is a placeholder for now.
+export default function StoryModal({ visible, title, body, onClose }: Props) {
   return (
-    <Modal animationType="fade" transparent statusBarTranslucent>
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.chapter}>Chapter {event.chapter}: {CHAPTER_TITLES[event.chapter]}</Text>
-            <Text style={styles.emoji}>{def?.emoji ?? '📌'}</Text>
-            <Text style={styles.title}>{def?.title ?? event.event_key}</Text>
-          </View>
-
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.narrative}>{def?.narrative ?? 'A new event has unfolded.'}</Text>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
+      <View style={s.overlay}>
+        <View style={s.card}>
+          <Text style={s.emoji}>📖</Text>
+          <Text style={s.title}>{title ?? 'THE STORY SO FAR'}</Text>
+          <ScrollView style={s.scroll} contentContainerStyle={{ paddingVertical: 4 }}>
+            <Text style={s.body}>{body ?? '…'}</Text>
           </ScrollView>
-
-          <Pressable style={styles.dismissBtn} onPress={onDismiss}>
-            <Text style={styles.dismissText}>Acknowledged ›</Text>
+          <Pressable style={({ pressed }) => [s.btn, pressed && s.btnPressed]} onPress={onClose}>
+            <Text style={s.btnText}>CONTINUE →</Text>
           </Pressable>
         </View>
       </View>
@@ -35,44 +28,26 @@ export default function StoryModal({ event, onDismiss }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   overlay: {
-    flex: 1,
-    backgroundColor: '#000000cc',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center', justifyContent: 'center', padding: 28,
   },
-  container: {
-    backgroundColor: '#1a1208',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#d4791c',
-    maxHeight: '80%',
-    width: '100%',
-    overflow: 'hidden',
+  card: {
+    width: '100%', maxWidth: 420,
+    backgroundColor: C.card, borderWidth: 2, borderColor: C.primary,
+    borderBottomWidth: 5, borderBottomColor: C.primaryDark,
+    borderRadius: 16, padding: 22, alignItems: 'center',
   },
-  header: {
-    alignItems: 'center',
-    paddingTop: 28,
-    paddingBottom: 20,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderColor: '#2a1f14',
-    gap: 8,
+  emoji:  { fontSize: 40, marginBottom: 8 },
+  title:  { fontFamily: F.pixel, fontSize: 12, color: C.primary, letterSpacing: 1, textAlign: 'center', marginBottom: 14 },
+  scroll: { maxHeight: 260, alignSelf: 'stretch' },
+  body:   { fontFamily: F.body, fontSize: 18, color: C.text, lineHeight: 26, textAlign: 'center' },
+  btn: {
+    marginTop: 18, backgroundColor: C.primary, borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 32, alignItems: 'center',
+    borderBottomWidth: 4, borderBottomColor: C.primaryDark,
   },
-  chapter: { color: '#d4791c', fontWeight: '700', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
-  emoji: { fontSize: 52 },
-  title: { color: '#e8d5b8', fontWeight: '800', fontSize: 22, textAlign: 'center' },
-  scroll: { maxHeight: 300 },
-  scrollContent: { padding: 24 },
-  narrative: { color: '#c4b090', fontSize: 15, lineHeight: 24 },
-  dismissBtn: {
-    backgroundColor: '#d4791c',
-    margin: 20,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  dismissText: { color: '#100d0a', fontWeight: '800', fontSize: 16 },
+  btnPressed: { borderBottomWidth: 0, marginTop: 22 },
+  btnText:    { fontFamily: F.pixel, fontSize: 10, color: C.bg, letterSpacing: 1 },
 });
