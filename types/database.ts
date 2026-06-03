@@ -22,17 +22,19 @@ export type Database = {
           household_id: string | null; id: string; is_leader: boolean
           last_monster_attack: string; level: number; monster_hp: number
           player_hp: number; player_max_hp: number; points: number
-          revive_progress: number
+          revive_progress: number; push_token: string | null
           monsters_defeated: number; gold_spent: number; deaths: number
           revives: number; chores_done: number
           role: string | null; tower_floor: number; username: string | null; xp: number
         }
         Insert: {
           avatar_url?: string | null; character_type?: string; created_at?: string | null
-          household_id?: string | null; id: string; is_leader?: boolean
+          household_id?: string | null; id?: string; is_leader?: boolean
           last_monster_attack?: string; level?: number; monster_hp?: number
           player_hp?: number; player_max_hp?: number; points?: number
-          revive_progress?: number
+          revive_progress?: number; push_token?: string | null
+          monsters_defeated?: number; gold_spent?: number; deaths?: number
+          revives?: number; chores_done?: number
           role?: string | null; tower_floor?: number; username?: string | null; xp?: number
         }
         Update: {
@@ -40,6 +42,9 @@ export type Database = {
           household_id?: string | null; id?: string; is_leader?: boolean
           last_monster_attack?: string; level?: number; monster_hp?: number
           player_hp?: number; player_max_hp?: number; points?: number
+          revive_progress?: number; push_token?: string | null
+          monsters_defeated?: number; gold_spent?: number; deaths?: number
+          revives?: number; chores_done?: number
           role?: string | null; tower_floor?: number; username?: string | null; xp?: number
         }
         Relationships: [{ foreignKeyName: "profiles_household_id_fkey"; columns: ["household_id"]; isOneToOne: false; referencedRelation: "households"; referencedColumns: ["id"] }]

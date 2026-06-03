@@ -301,7 +301,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
         ? { revive_progress: 0, player_hp: calcMaxHp(profile, playerItems), revives: (profile.revives ?? 0) + 1 }
         : { revive_progress: prog };
       updates.chores_done = (profile.chores_done ?? 0) + 1;
-      await supabase.from('profiles').update(updates).eq('id', profile.id);
+      await supabase.from('profiles').update(updates as any).eq('id', profile.id);
     } else {
       playAttackSfx(profile.character_type);   // per-character attack sound
       const damage       = calcTotalDamage(chore.damage_reward, profile, playerItems);
@@ -334,7 +334,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
           updates.monster_hp  = nf.monster_max_hp;
         }
       }
-      await supabase.from('profiles').update(updates).eq('id', profile.id);
+      await supabase.from('profiles').update(updates as any).eq('id', profile.id);
     }
 
     // Always log the chore; notify family if in one.

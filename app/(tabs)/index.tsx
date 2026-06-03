@@ -421,7 +421,7 @@ export default function GameScreen() {
       .then(({ data }) => { if (data) setFloor(data); });
   }, [profile?.tower_floor]);
 
-  if (loading || !floor) {
+  if (loading || !floor || !profile) {
     return (
       <SafeAreaView style={s.container}>
         <ActivityIndicator color={C.primary} style={{ marginTop: 80 }} />

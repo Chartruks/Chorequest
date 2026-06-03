@@ -27,7 +27,17 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      ["expo-notifications", { "icon": "./assets/icon.png", "color": "#d4791c" }]
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#d4791c"
+        }
+      ],
+      "expo-audio",
+      "expo-font",
+      "expo-localization",
+      "expo-asset"
     ],
     "extra": {
       "eas": {
