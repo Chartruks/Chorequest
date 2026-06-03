@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { t } from '../../lib/i18n';
 import { C, F } from '../../constants/theme';
 
 export default function SignIn() {
@@ -10,10 +11,10 @@ export default function SignIn() {
   const [loading, setLoading]   = useState(false);
 
   async function handleSignIn() {
-    if (!email || !password) { Alert.alert('Error', 'Fill in all fields.'); return; }
+    if (!email || !password) { Alert.alert(t('auth.error'), t('auth.fillAll')); return; }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) Alert.alert('SIGN IN FAILED', error.message);
+    if (error) Alert.alert(t('auth.signInFailed'), error.message);
     setLoading(false);
   }
 
@@ -25,11 +26,11 @@ export default function SignIn() {
           <Text style={s.logoEmoji}>🏰</Text>
         </View>
         <Text style={s.title}>CHOREQUEST</Text>
-        <Text style={s.subtitle}>SIGN IN TO YOUR ACCOUNT</Text>
+        <Text style={s.subtitle}>{t('auth.signInSubtitle')}</Text>
 
         <TextInput
           style={s.input}
-          placeholder="EMAIL"
+          placeholder={t('auth.email')}
           placeholderTextColor={C.textDim}
           value={email}
           onChangeText={setEmail}
@@ -38,7 +39,7 @@ export default function SignIn() {
         />
         <TextInput
           style={s.input}
-          placeholder="PASSWORD"
+          placeholder={t('auth.password')}
           placeholderTextColor={C.textDim}
           value={password}
           onChangeText={setPassword}
@@ -50,26 +51,26 @@ export default function SignIn() {
           onPress={handleSignIn}
           disabled={loading}
         >
-          <Text style={s.btnText}>{loading ? 'CONNECTING…' : 'SIGN IN →'}</Text>
+          <Text style={s.btnText}>{loading ? t('auth.connecting') : t('auth.signIn')}</Text>
         </Pressable>
 
         {/* Divider */}
         <View style={s.divider}>
           <View style={s.dividerLine} />
-          <Text style={s.dividerText}>OR</Text>
+          <Text style={s.dividerText}>{t('auth.or')}</Text>
           <View style={s.dividerLine} />
         </View>
 
         {/* Join family */}
         <Link href="/(auth)/join-family" asChild>
           <Pressable style={({ pressed }) => [s.joinBtn, pressed && s.joinBtnPressed]}>
-            <Text style={s.joinBtnText}>👨‍👩‍👧  JOIN A FAMILY</Text>
+            <Text style={s.joinBtnText}>{t('auth.joinFamily')}</Text>
           </Pressable>
         </Link>
 
         <Link href="/(auth)/sign-up" asChild>
           <Pressable style={s.link}>
-            <Text style={s.linkText}>NO ACCOUNT? <Text style={s.linkAccent}>CREATE ONE</Text></Text>
+            <Text style={s.linkText}>{t('auth.noAccount')}<Text style={s.linkAccent}>{t('auth.createOne')}</Text></Text>
           </Pressable>
         </Link>
       </View>

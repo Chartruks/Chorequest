@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { t } from '../lib/i18n';
 import { C, F } from '../constants/theme';
 
 const IDLE_FRAMES = [
@@ -39,12 +40,12 @@ export default function CharacterPicker({ value, onChange }: { value: string; on
         onPress={() => onChange('1')}
       >
         <IdleSprite />
-        <Text style={[s.label, value === '1' && s.labelActive]}>HERO 1</Text>
+        <Text style={[s.label, value === '1' && s.labelActive]}>{t('char.hero1')}</Text>
       </Pressable>
 
       <View style={[s.card, s.cardLocked]}>
         <Text style={s.lockEmoji}>❓</Text>
-        <Text style={s.lockLabel}>COMING SOON</Text>
+        <Text style={s.lockLabel}>{t('char.comingSoon')}</Text>
       </View>
     </View>
   );

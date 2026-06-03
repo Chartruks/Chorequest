@@ -3,6 +3,7 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 import { Link } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import CharacterPicker from '../../components/CharacterPicker';
+import { t } from '../../lib/i18n';
 import { C, F } from '../../constants/theme';
 
 export default function SignUp() {
@@ -14,13 +15,13 @@ export default function SignUp() {
 
   async function handleSignUp() {
     if (!email || !password || !username) {
-      Alert.alert('Error', 'Fill in all fields.');
+      Alert.alert(t('auth.error'), t('auth.fillAll'));
       return;
     }
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      Alert.alert('SIGN UP FAILED', error.message);
+      Alert.alert(t('auth.signUpFailed'), error.message);
       setLoading(false);
       return;
     }
@@ -28,7 +29,7 @@ export default function SignUp() {
       await supabase.from('profiles').update({ username, character_type: character } as any).eq('id', data.user.id);
     }
     setLoading(false);
-    Alert.alert('CHECK YOUR EMAIL', 'Confirm your email, then sign in to start your quest.');
+    Alert.alert(t('auth.checkEmail'), t('auth.checkEmailBody'));
   }
 
   return (
@@ -37,12 +38,12 @@ export default function SignUp() {
 
         <View style={s.logoBox}><Text style={s.logoEmoji}>🏰</Text></View>
         <Text style={s.title}>CHOREQUEST</Text>
-        <Text style={s.subtitle}>CREATE YOUR HERO</Text>
+        <Text style={s.subtitle}>{t('auth.createHero')}</Text>
 
-        <Text style={s.fieldLabel}>HERO NAME</Text>
+        <Text style={s.fieldLabel}>{t('auth.heroName')}</Text>
         <TextInput
           style={s.input}
-          placeholder="YOUR NAME"
+          placeholder={t('auth.yourName')}
           placeholderTextColor={C.textDim}
           value={username}
           onChangeText={setUsername}
@@ -50,13 +51,13 @@ export default function SignUp() {
           maxLength={20}
         />
 
-        <Text style={s.fieldLabel}>CHOOSE YOUR CHARACTER</Text>
+        <Text style={s.fieldLabel}>{t('auth.chooseCharacter')}</Text>
         <CharacterPicker value={character} onChange={setCharacter} />
 
-        <Text style={s.fieldLabel}>EMAIL</Text>
+        <Text style={s.fieldLabel}>{t('auth.email')}</Text>
         <TextInput
           style={s.input}
-          placeholder="YOUR@EMAIL.COM"
+          placeholder={t('auth.emailPh')}
           placeholderTextColor={C.textDim}
           value={email}
           onChangeText={setEmail}
@@ -64,10 +65,10 @@ export default function SignUp() {
           keyboardType="email-address"
         />
 
-        <Text style={s.fieldLabel}>PASSWORD</Text>
+        <Text style={s.fieldLabel}>{t('auth.password')}</Text>
         <TextInput
           style={s.input}
-          placeholder="SECRET CODE"
+          placeholder={t('auth.passwordPh')}
           placeholderTextColor={C.textDim}
           value={password}
           onChangeText={setPassword}
@@ -79,12 +80,12 @@ export default function SignUp() {
           onPress={handleSignUp}
           disabled={loading}
         >
-          <Text style={s.btnText}>{loading ? 'CREATING…' : 'START QUEST →'}</Text>
+          <Text style={s.btnText}>{loading ? t('auth.creating') : t('auth.startQuest')}</Text>
         </Pressable>
 
         <Link href="/(auth)/sign-in" asChild>
           <Pressable style={s.link}>
-            <Text style={s.linkText}>ALREADY HAVE AN ACCOUNT? <Text style={s.linkAccent}>SIGN IN</Text></Text>
+            <Text style={s.linkText}>{t('auth.haveAccount')}<Text style={s.linkAccent}>{t('auth.signIn').replace(' →','')}</Text></Text>
           </Pressable>
         </Link>
 

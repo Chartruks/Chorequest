@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import { maxHpForLevel } from '../../lib/towerEngine';
 import HeroSprite from '../../components/HeroSprite';
+import { t } from '../../lib/i18n';
 import { C, F } from '../../constants/theme';
 
 type StoreItem  = Database['public']['Tables']['store_items']['Row'];
@@ -34,7 +35,7 @@ function CharacterCarousel() {
       {RARITIES.map(r => (
         <View key={r.key} style={cc.section}>
           <View style={[cc.tag, { borderColor: r.color }]}>
-            <Text style={[cc.tagText, { color: r.color }]}>{r.label}</Text>
+            <Text style={[cc.tagText, { color: r.color }]}>{t(`store.${r.key}`)}</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cc.rowScroll}>
             {Array.from({ length: r.count }).map((_, i) => {
@@ -42,7 +43,7 @@ function CharacterCarousel() {
               return (
                 <View key={i} style={[cc.card, { borderColor: unlocked ? r.color : C.border }]}>
                   <HeroSprite size={CAROUSEL} unlocked={unlocked} />
-                  <Text style={[cc.cardName, unlocked && { color: r.color }]}>HERO {i + 1}</Text>
+                  <Text style={[cc.cardName, unlocked && { color: r.color }]}>{t('store.heroN', { n: i + 1 })}</Text>
                 </View>
               );
             })}
@@ -56,8 +57,8 @@ function CharacterCarousel() {
 const FILTERS = ['character', 'weapon', 'armor', 'consumable', 'real_life'] as const;
 type Filter = typeof FILTERS[number];
 
-const FILTER_LABEL: Record<Filter, string> = {
-  character: 'CHAR', weapon: 'WEAPON', armor: 'ARMOR', consumable: 'USE', real_life: 'REWARDS',
+const FILTER_KEY: Record<Filter, string> = {
+  character: 'store.fChar', weapon: 'store.fWeapon', armor: 'store.fArmor', consumable: 'store.fUse', real_life: 'store.fRewards',
 };
 const TYPE_COLOR: Record<string, string> = {
   character: C.primary, weapon: C.damage, armor: C.hp, consumable: C.gold, real_life: '#c77dff',
@@ -93,22 +94,22 @@ function AddRewardModal({ visible, householdId, createdBy, onClose, onSaved }: {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={rm.container}>
         <View style={rm.header}>
-          <Text style={rm.headerTitle}>ADD REWARD</Text>
+          <Text style={rm.headerTitle}>{t('store.addReward')}</Text>
           <Pressable onPress={onClose} style={rm.closeBtn}>
             <Text style={rm.closeTxt}>✕</Text>
           </Pressable>
         </View>
 
         <View style={rm.body}>
-          <Text style={rm.lbl}>REWARD TITLE</Text>
-          <TextInput style={rm.input} placeholder="E.G. MOVIE NIGHT" placeholderTextColor={C.textDim}
+          <Text style={rm.lbl}>{t('store.rewardTitle')}</Text>
+          <TextInput style={rm.input} placeholder={t('store.rewardTitlePh')} placeholderTextColor={C.textDim}
             value={title} onChangeText={setTitle} />
 
-          <Text style={rm.lbl}>DESCRIPTION (OPTIONAL)</Text>
-          <TextInput style={[rm.input, { height: 80 }]} placeholder="WHAT DOES THE HERO GET?"
+          <Text style={rm.lbl}>{t('store.rewardDesc')}</Text>
+          <TextInput style={[rm.input, { height: 80 }]} placeholder={t('store.rewardDescPh')}
             placeholderTextColor={C.textDim} value={desc} onChangeText={setDesc} multiline />
 
-          <Text style={rm.lbl}>GOLD COST</Text>
+          <Text style={rm.lbl}>{t('store.goldCost')}</Text>
           <TextInput style={rm.input} value={cost} onChangeText={setCost}
             keyboardType="number-pad" />
 
@@ -116,7 +117,7 @@ function AddRewardModal({ visible, householdId, createdBy, onClose, onSaved }: {
             style={({ pressed }) => [rm.saveBtn, saving && { opacity: 0.5 }, pressed && rm.saveBtnPressed]}
             onPress={save} disabled={saving}
           >
-            <Text style={rm.saveTxt}>{saving ? 'SAVING…' : 'ADD REWARD →'}</Text>
+            <Text style={rm.saveTxt}>{saving ? t('store.saving') : t('store.addRewardBtn')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -172,7 +173,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   async function buy(item: StoreItem) {
     if (!profile) return;
     if (profile.points < item.cost) {
-      Alert.alert('NOT ENOUGH GOLD', `Need 💰${item.cost}, have 💰${profile.points}.`);
+      Alert.alert(t('store.notEnough'), t('store.notEnoughBody', { cost: item.cost, have: profile.points }));
       return;
     }
     setBuying(item.id);
@@ -195,25 +196,25 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
 
     // Gear can be equipped; everything lands in the bag either way.
     if (item.item_type === 'weapon' || item.item_type === 'armor') {
-      Alert.alert(`Bought ${item.name}`, 'Equip it now?', [
-        { text: 'Keep in bag', style: 'cancel' },
-        { text: 'Equip', onPress: () => equipItem(item) },
+      Alert.alert(t('store.bought', { name: item.name }), t('store.equipNow'), [
+        { text: t('store.keepInBag'), style: 'cancel' },
+        { text: t('store.equip'), onPress: () => equipItem(item) },
       ]);
     } else {
-      Alert.alert('Added to bag', `${item.name} is in your bag.`);
+      Alert.alert(t('store.addedBag'), t('store.addedBagBody', { name: item.name }));
     }
   }
 
   async function redeem(reward: Reward) {
     if (!profile) return;
     if (profile.points < reward.points_cost) {
-      Alert.alert('NOT ENOUGH GOLD', `Need 💰${reward.points_cost}, have 💰${profile.points}.`);
+      Alert.alert(t('store.notEnough'), t('store.notEnoughBody', { cost: reward.points_cost, have: profile.points }));
       return;
     }
     setBuying(reward.id);
     await supabase.from('profiles').update({ points: profile.points - reward.points_cost, gold_spent: (profile.gold_spent ?? 0) + reward.points_cost } as any).eq('id', profile.id);
     await refreshProfile();
-    Alert.alert('REDEEMED! 🎉', `"${reward.title}" has been redeemed. Claim your real-world reward!`);
+    Alert.alert(t('store.redeemed'), t('store.redeemedBody', { title: reward.title }));
     setBuying(null);
   }
 
@@ -234,7 +235,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
               <Text style={s.backBtnText}>←</Text>
             </Pressable>
           )}
-          <Text style={s.headerTitle}>🛒 STORE</Text>
+          <Text style={s.headerTitle}>{t('store.title')}</Text>
         </View>
         <View style={s.headerRight}>
           <View style={s.goldBadge}><Text style={s.goldText}>💰 {profile.points}</Text></View>
@@ -250,7 +251,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
       <View style={s.filterRow}>
         {FILTERS.map(f => (
           <Pressable key={f} onPress={() => setFilter(f)} style={[s.pill, filter === f && { backgroundColor: TYPE_COLOR[f], borderColor: TYPE_COLOR[f] }]}>
-            <Text style={[s.pillText, filter === f && s.pillTextActive]}>{FILTER_LABEL[f]}</Text>
+            <Text style={[s.pillText, filter === f && s.pillTextActive]}>{t(FILTER_KEY[f])}</Text>
           </Pressable>
         ))}
       </View>
@@ -269,8 +270,8 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={s.empty}>
-              <Text style={s.emptyText}>NO REWARDS YET</Text>
-              {profile.is_leader && <Text style={s.emptyHint}>Tap + to add a real-life reward</Text>}
+              <Text style={s.emptyText}>{t('store.noRewards')}</Text>
+              {profile.is_leader && <Text style={s.emptyHint}>{t('store.noRewardsHint')}</Text>}
             </View>
           }
           renderItem={({ item }) => {
@@ -303,7 +304,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
           columnWrapperStyle={s.row}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={s.empty}><Text style={s.emptyText}>NOTHING HERE YET</Text></View>
+            <View style={s.empty}><Text style={s.emptyText}>{t('store.nothingHere')}</Text></View>
           }
           renderItem={({ item }) => {
             const ownedEntry = owned.find(o => o.item_id === item.id);
@@ -321,16 +322,16 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
                 {item.heal_amount  > 0 && <Text style={[s.stat, { color: C.gold }]}>+{item.heal_amount > 900 ? 'FULL' : item.heal_amount} ❤️</Text>}
                 <View style={s.cardBottom}>
                   {isEquipped ? (
-                    <View style={[s.tag, { borderColor: C.hp }]}><Text style={[s.tagText, { color: C.hp }]}>EQ.</Text></View>
+                    <View style={[s.tag, { borderColor: C.hp }]}><Text style={[s.tagText, { color: C.hp }]}>{t('store.eq')}</Text></View>
                   ) : isOwned && item.item_type !== 'consumable' ? (
-                    <View style={s.tag}><Text style={s.tagText}>OWN</Text></View>
+                    <View style={s.tag}><Text style={s.tagText}>{t('store.own')}</Text></View>
                   ) : (
                     <Pressable
                       style={({ pressed }) => [s.buyBtn, { backgroundColor: tColor, borderBottomColor: tColor + '99' }, !canAfford && s.buyBtnDim, pressed && s.buyBtnPressed]}
                       disabled={!!buying || (!canAfford && item.cost !== 0)}
                       onPress={() => buy(item)}
                     >
-                      <Text style={s.buyBtnText}>{buying === item.id ? '…' : item.cost === 0 ? 'FREE' : `💰${item.cost}`}</Text>
+                      <Text style={s.buyBtnText}>{buying === item.id ? '…' : item.cost === 0 ? t('store.free') : `💰${item.cost}`}</Text>
                     </Pressable>
                   )}
                 </View>

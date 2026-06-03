@@ -7,8 +7,10 @@ import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { ACHIEVEMENTS, achievementProgress } from '../../lib/achievements';
+import { ACHIEVEMENTS, achievementProgress, achTitle, achDesc } from '../../lib/achievements';
 import { playSfx } from '../../lib/sfx';
+import { STORY_INTRO, floorStory } from '../../lib/story';
+import { t } from '../../lib/i18n';
 import {
   calcMaxHp, calcMonsterAttack, getEquippedBonus,
   nextAttackCountdown, xpForNextLevel,
@@ -284,7 +286,7 @@ export default function GameScreen() {
       const d = new Date(entries[0].created_at);
       const dMid = new Date(d); dMid.setHours(0, 0, 0, 0);
       const diff = Math.round((today.getTime() - dMid.getTime()) / 86_400_000);
-      const label = diff === 0 ? 'TODAY' : diff === 1 ? 'YESTERDAY'
+      const label = diff === 0 ? t('guild.today') : diff === 1 ? t('guild.yesterday')
         : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
       logsByDay.push({ day: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`, label, entries });
     }
@@ -322,12 +324,12 @@ export default function GameScreen() {
   async function resetProgress() {
     if (!profile) return;
     Alert.alert(
-      'RESET PROGRESS?',
-      'This sets your hero back to level 1 and clears your gold, XP, floor and items. This cannot be undone.',
+      t('guild.resetTitle'),
+      t('guild.resetBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('guild.cancel'), style: 'cancel' },
         {
-          text: 'Reset', style: 'destructive',
+          text: t('guild.resetConfirm'), style: 'destructive',
           onPress: async () => {
             setResetting(true);
             const { data: f1 } = await supabase
@@ -367,7 +369,7 @@ export default function GameScreen() {
   useEffect(() => {
     if (profile && !storyShownRef.current) {
       storyShownRef.current = true;
-      enqueuePopup({ kind: 'story' });   // placeholder intro story
+      enqueuePopup({ kind: 'story', body: STORY_INTRO });
     }
   }, [profile]);
 
@@ -381,7 +383,7 @@ export default function GameScreen() {
     unlockedRef.current = now;
     if (newly.length > 0) {
       const a = ACHIEVEMENTS.find(x => x.id === newly[0])!;
-      setAchToast({ icon: a.icon, title: a.title });
+      setAchToast({ icon: a.icon, title: achTitle(a.id) });
       toastAnim.setValue(0);
       Animated.sequence([
         Animated.timing(toastAnim, { toValue: 1, duration: 280, useNativeDriver: true }),
@@ -391,11 +393,12 @@ export default function GameScreen() {
     }
   }, [profile?.monsters_defeated, profile?.level, profile?.gold_spent, profile?.deaths, profile?.revives, profile?.chores_done]);
 
-  function handleDefeat(levelUp: { from: number; to: number; hpGain: number } | null) {
-    // Close the quest sheet, then queue: level-up first (if any), then the story.
+  function handleDefeat({ levelUp, clearedFloor }: { levelUp: { from: number; to: number; hpGain: number } | null; clearedFloor: number }) {
+    // Close the quest sheet, then queue: level-up first (if any), then the floor's story.
     setShowQuests(false);
     if (levelUp) enqueuePopup({ kind: 'levelup', ...levelUp });
-    enqueuePopup({ kind: 'story' });   // placeholder defeat snippet
+    const body = floorStory(clearedFloor);
+    if (body) enqueuePopup({ kind: 'story', body });
   }
 
   useFocusEffect(useCallback(() => { load(); }, [profile?.id]));
@@ -483,8 +486,8 @@ export default function GameScreen() {
                   <View style={[s.fill, { width: `${monsterPct * 100}%` as any, backgroundColor: monsterColor }]} />
                 </View>
               </Animated.View>
-              <Text style={s.timerLabel}>⚔️ NEXT ATTACK  <Text style={s.timerVal}>{countdown}</Text></Text>
-              <Text style={s.timerHint}>{floor.monster_attack} DMG · EVERY {floor.attack_interval_hours}H</Text>
+              <Text style={s.timerLabel}>{t('game.nextAttack')}  <Text style={s.timerVal}>{countdown}</Text></Text>
+              <Text style={s.timerHint}>{t('game.dmgEvery', { dmg: floor.monster_attack, h: floor.attack_interval_hours })}</Text>
             </View>
             <Pressable
               style={({ pressed }) => [s.attackBtn, pressed && s.attackBtnPressed]}
@@ -496,7 +499,7 @@ export default function GameScreen() {
                 </View>
               )}
               <Text style={s.attackEmoji}>{dead ? '💀' : '⚔️'}</Text>
-              <Text style={s.attackLabel}>{dead ? 'REVIVE' : 'ATTACK'}</Text>
+              <Text style={s.attackLabel}>{dead ? t('game.revive') : t('game.attack')}</Text>
             </Pressable>
           </View>
         </View>
@@ -537,7 +540,7 @@ export default function GameScreen() {
 
                 {/* Group 1: name + level + gold */}
                 <View style={{ gap: 4 }}>
-                  <Text style={s.heroName} numberOfLines={1}>{(profile.username ?? 'HERO').toUpperCase()}</Text>
+                  <Text style={s.heroName} numberOfLines={1}>{(profile.username ?? t('common.hero')).toUpperCase()}</Text>
                   <View style={s.badgeRow}>
                     <Text style={s.lvText}>LV.{profile.level}</Text>
                     <Text style={s.goldText}>{profile.points} 💰</Text>
@@ -548,7 +551,7 @@ export default function GameScreen() {
                 <View style={s.barsGroup}>
                   <View style={s.barBlock}>
                     <View style={s.barHead}>
-                      <Text style={s.barLbl}>XP</Text>
+                      <Text style={s.barLbl}>{t('game.xp')}</Text>
                       <Text style={s.barVal}>{xp.current}/{xp.needed}</Text>
                     </View>
                     <View style={s.track}>
@@ -557,7 +560,7 @@ export default function GameScreen() {
                   </View>
                   <View style={s.barBlock}>
                     <View style={s.barHead}>
-                      <Text style={s.barLbl}>HP</Text>
+                      <Text style={s.barLbl}>{t('game.hp')}</Text>
                       <Text style={s.barVal}>{profile.player_hp}/{maxHp}</Text>
                     </View>
                     <View style={s.track}>
@@ -576,19 +579,19 @@ export default function GameScreen() {
                 <View style={s.actionGrid}>
                   <Pressable style={({ pressed }) => [s.actionTile, s.storeTile, pressed && s.actionTilePressed]} onPress={() => { playSfx('menu'); setShowStore(true); }}>
                     <Text style={s.actionTileEmoji}>🛒</Text>
-                    <Text style={[s.actionTileLabel, { color: '#cce8ff' }]}>STORE</Text>
+                    <Text style={[s.actionTileLabel, { color: '#cce8ff' }]}>{t('game.store')}</Text>
                   </Pressable>
                   <Pressable style={({ pressed }) => [s.actionTile, s.achieveTile, pressed && s.actionTilePressed]} onPress={() => { playSfx('menu'); setShowAchievements(true); }}>
                     <Text style={s.actionTileEmoji}>🏆</Text>
-                    <Text style={[s.actionTileLabel, { color: '#fffacc' }]}>FEATS</Text>
+                    <Text style={[s.actionTileLabel, { color: '#fffacc' }]}>{t('game.feats')}</Text>
                   </Pressable>
                   <Pressable style={({ pressed }) => [s.actionTile, s.skillsTile, pressed && s.actionTilePressed]} onPress={() => { playSfx('menu'); setShowSkills(true); }}>
                     <Text style={s.actionTileEmoji}>✨</Text>
-                    <Text style={[s.actionTileLabel, { color: '#e8d5ff' }]}>SKILLS</Text>
+                    <Text style={[s.actionTileLabel, { color: '#e8d5ff' }]}>{t('game.skills')}</Text>
                   </Pressable>
                   <Pressable style={({ pressed }) => [s.actionTile, s.guildTile, pressed && s.actionTilePressed]} onPress={() => { playSfx('menu'); setShowGuild(true); }}>
                     <Text style={s.actionTileEmoji}>🏰</Text>
-                    <Text style={[s.actionTileLabel, { color: '#fff5cc' }]}>GUILD</Text>
+                    <Text style={[s.actionTileLabel, { color: '#fff5cc' }]}>{t('game.guild')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -601,7 +604,7 @@ export default function GameScreen() {
               <View style={s.divider} />
               <View style={s.familySection}>
                 <View style={s.sectionHead}>
-                  <Text style={s.sectionHeadText}>FAMILY</Text>
+                  <Text style={s.sectionHeadText}>{t('game.family')}</Text>
                 </View>
                 <View style={s.familyList}>
                   {family.map(m => {
@@ -611,7 +614,7 @@ export default function GameScreen() {
                         <Text style={{ fontSize: 24 }}>{m.is_leader ? '👑' : '🧑'}</Text>
                         <View style={s.memberInfo}>
                           <View style={s.memberTopRow}>
-                            <Text style={s.memberName}>{(m.username ?? 'HERO').toUpperCase()}</Text>
+                            <Text style={s.memberName}>{(m.username ?? t('common.hero')).toUpperCase()}</Text>
                             <Text style={s.memberSub}>LV.{m.level} · FL.{m.tower_floor}</Text>
                           </View>
                           <View style={s.track}>
@@ -648,13 +651,13 @@ export default function GameScreen() {
               <Pressable onPress={() => setShowBag(false)} style={s.guildBack}>
                 <Text style={s.guildBackTxt}>←</Text>
               </Pressable>
-              <Text style={[s.guildTitle, { color: C.primary }]}>🎒 BAG</Text>
+              <Text style={[s.guildTitle, { color: C.primary }]}>{t('bag.title')}</Text>
             </View>
             {playerItems.length === 0 ? (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <Text style={{ fontSize: 40 }}>🎒</Text>
-                <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>BAG IS EMPTY</Text>
-                <Text style={{ fontFamily: F.body, fontSize: 15, color: C.textDim }}>Buy gear in the store.</Text>
+                <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>{t('bag.empty')}</Text>
+                <Text style={{ fontFamily: F.body, fontSize: 15, color: C.textDim }}>{t('bag.emptyHint')}</Text>
               </View>
             ) : (
               <ScrollView contentContainerStyle={s.bagList}>
@@ -675,12 +678,12 @@ export default function GameScreen() {
                       </View>
                       {isConsumable ? (
                         <Pressable style={[s.bagTag, s.bagTagUse]} onPress={() => useConsumable(pi)}>
-                          <Text style={[s.bagTagTxt, { color: C.bg }]}>USE</Text>
+                          <Text style={[s.bagTagTxt, { color: C.bg }]}>{t('bag.use')}</Text>
                         </Pressable>
                       ) : (
                         <Pressable style={[s.bagTag, pi.equipped ? s.bagTagOn : s.bagTagOff]} onPress={() => toggleEquip(pi)}>
                           <Text style={[s.bagTagTxt, { color: pi.equipped ? C.bg : C.textMuted }]}>
-                            {pi.equipped ? 'EQUIPPED' : 'EQUIP'}
+                            {pi.equipped ? t('bag.equipped') : t('bag.equip')}
                           </Text>
                         </Pressable>
                       )}
@@ -699,7 +702,7 @@ export default function GameScreen() {
               <Pressable onPress={() => setShowAchievements(false)} style={s.guildBack}>
                 <Text style={s.guildBackTxt}>←</Text>
               </Pressable>
-              <Text style={[s.guildTitle, { color: C.gold, flex: 1 }]}>🏆 FEATS</Text>
+              <Text style={[s.guildTitle, { color: C.gold, flex: 1 }]}>{t('feats.title')}</Text>
               <Text style={s.featCount}>{ACHIEVEMENTS.filter(a => achievementProgress(profile, a).unlocked).length}/{ACHIEVEMENTS.length}</Text>
             </View>
             <ScrollView contentContainerStyle={s.featList}>
@@ -710,8 +713,8 @@ export default function GameScreen() {
                   <View key={a.id} style={[s.featRow, !unlocked && { opacity: 0.55 }]}>
                     <Text style={s.featIcon}>{unlocked ? a.icon : '🔒'}</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={s.featTitle}>{a.title.toUpperCase()}</Text>
-                      <Text style={s.featDesc}>{a.desc}</Text>
+                      <Text style={s.featTitle}>{achTitle(a.id).toUpperCase()}</Text>
+                      <Text style={s.featDesc}>{achDesc(a.id)}</Text>
                       {!unlocked && (
                         <View style={s.featTrack}>
                           <View style={[s.featFill, { width: `${pct * 100}%` as any }]} />
@@ -742,10 +745,10 @@ export default function GameScreen() {
               >
                 <Text style={s.guildBackTxt}>←</Text>
               </Pressable>
-              <Text style={[s.guildTitle, { flex: 1 }]}>{showLogs ? '📜 CHORE LOGS' : '🏰 GUILD'}</Text>
+              <Text style={[s.guildTitle, { flex: 1 }]}>{showLogs ? t('guild.choreLogs') : t('guild.title')}</Text>
               {!showLogs && (
                 <Pressable onPress={openLogs} style={s.logsBtn}>
-                  <Text style={s.logsBtnTxt}>📜 LOGS</Text>
+                  <Text style={s.logsBtnTxt}>{t('guild.logs')}</Text>
                 </Pressable>
               )}
             </View>
@@ -754,7 +757,7 @@ export default function GameScreen() {
               logsByDay.length === 0 ? (
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <Text style={{ fontSize: 40 }}>📜</Text>
-                  <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>NO CHORES YET</Text>
+                  <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>{t('guild.noChores')}</Text>
                 </View>
               ) : (
                 <ScrollView contentContainerStyle={s.logList}>
@@ -762,13 +765,13 @@ export default function GameScreen() {
                     <View key={group.day} style={s.logDay}>
                       <Text style={s.logDayLabel}>{group.label}</Text>
                       {group.entries.map(e => {
-                        const t = new Date(e.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                        const tm = new Date(e.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
                         return (
                           <View key={e.id} style={s.logRow}>
-                            <Text style={s.logTime}>{t}</Text>
+                            <Text style={s.logTime}>{tm}</Text>
                             <View style={{ flex: 1 }}>
                               <Text style={s.logTitle}>{e.chore_title}</Text>
-                              <Text style={s.logWho}>{nameById[e.profile_id] ?? 'SOMEONE'}</Text>
+                              <Text style={s.logWho}>{nameById[e.profile_id] ?? t('common.someone')}</Text>
                             </View>
                             <Text style={s.logDmg}>⚔️ {e.damage}</Text>
                           </View>
@@ -782,27 +785,27 @@ export default function GameScreen() {
               <View style={{ flex: 1 }}>
                 {inviteCode ? (
                   <View style={s.guildCodeBox}>
-                    <Text style={s.guildCodeLbl}>FAMILY CODE</Text>
+                    <Text style={s.guildCodeLbl}>{t('guild.familyCode')}</Text>
                     <Text style={s.guildCode}>{inviteCode}</Text>
                   </View>
                 ) : (
                   <View style={s.guildCreateBox}>
-                    <Text style={s.guildCreateHint}>You&apos;re playing solo. Create a guild to invite family and share quests.</Text>
+                    <Text style={s.guildCreateHint}>{t('guild.soloHint')}</Text>
                     <Pressable
                       style={({ pressed }) => [s.setupBtn, creating && { opacity: 0.5 }, pressed && s.setupBtnPressed]}
                       onPress={createHousehold}
                       disabled={creating}
                     >
-                      <Text style={s.setupBtnText}>{creating ? 'CREATING…' : '＋ CREATE GUILD'}</Text>
+                      <Text style={s.setupBtnText}>{creating ? t('guild.creating') : t('guild.createGuild')}</Text>
                     </Pressable>
                   </View>
                 )}
                 <View style={s.guildFooter}>
                   <Pressable style={s.resetBtn} onPress={resetProgress} disabled={resetting}>
-                    <Text style={s.resetText}>{resetting ? 'RESETTING…' : '↺ RESET PROGRESS'}</Text>
+                    <Text style={s.resetText}>{resetting ? t('guild.resetting') : t('guild.reset')}</Text>
                   </Pressable>
                   <Pressable style={s.signOutBtn} onPress={signOut}>
-                    <Text style={s.signOutText}>SIGN OUT</Text>
+                    <Text style={s.signOutText}>{t('guild.signOut')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -818,11 +821,11 @@ export default function GameScreen() {
             <Pressable onPress={() => setShowSkills(false)} style={s.guildBack}>
               <Text style={s.guildBackTxt}>←</Text>
             </Pressable>
-            <Text style={[s.guildTitle, { color: '#b89bff' }]}>✨ SKILLS</Text>
+            <Text style={[s.guildTitle, { color: '#b89bff' }]}>{t('skills.title')}</Text>
           </View>
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Text style={{ fontSize: 40 }}>✨</Text>
-            <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>SKILL TREE COMING SOON</Text>
+            <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>{t('skills.soon')}</Text>
           </View>
         </SafeAreaView>
       </Modal>
@@ -834,23 +837,25 @@ export default function GameScreen() {
           {popup.kind === 'levelup' ? (
             <View style={s.luCard}>
               <Text style={s.luBurst}>⬆️</Text>
-              <Text style={s.luTitle}>LEVEL UP!</Text>
+              <Text style={s.luTitle}>{t('lu.title')}</Text>
               <Text style={s.luLevel}>Lv.{popup.from} → Lv.{popup.to}</Text>
               <View style={s.luStatRow}>
-                <Text style={[s.luStat, { color: C.hp }]}>❤️ MAX HP  +{popup.hpGain}</Text>
+                <Text style={[s.luStat, { color: C.hp }]}>{t('lu.maxHp', { n: popup.hpGain })}</Text>
               </View>
-              <Text style={s.luHeal}>Fully healed!</Text>
+              <Text style={s.luHeal}>{t('lu.healed')}</Text>
               <Pressable style={({ pressed }) => [s.luBtn, pressed && { borderBottomWidth: 0, marginTop: 4 }]} onPress={() => setPopup(null)}>
-                <Text style={s.luBtnTxt}>CONTINUE →</Text>
+                <Text style={s.luBtnTxt}>{t('game.continue')}</Text>
               </Pressable>
             </View>
           ) : (
             <View style={s.luCard}>
               <Text style={s.luBurst}>📖</Text>
-              <Text style={[s.luTitle, { color: C.primary }]}>THE STORY SO FAR</Text>
-              <Text style={s.storyBody}>{popup.body ?? '…'}</Text>
+              <Text style={[s.luTitle, { color: C.primary }]}>{t('story.title')}</Text>
+              <ScrollView style={s.storyScroll} contentContainerStyle={{ paddingVertical: 2 }} showsVerticalScrollIndicator={false}>
+                <Text style={s.storyBody}>{popup.body ?? '…'}</Text>
+              </ScrollView>
               <Pressable style={({ pressed }) => [s.luBtn, { backgroundColor: C.primary, borderBottomColor: C.primaryDark }, pressed && { borderBottomWidth: 0, marginTop: 4 }]} onPress={() => setPopup(null)}>
-                <Text style={s.luBtnTxt}>CONTINUE →</Text>
+                <Text style={s.luBtnTxt}>{t('game.continue')}</Text>
               </Pressable>
             </View>
           )}
@@ -870,7 +875,7 @@ export default function GameScreen() {
         >
           <Text style={s.toastIcon}>{achToast.icon}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={s.toastLabel}>ACHIEVEMENT UNLOCKED</Text>
+            <Text style={s.toastLabel}>{t('feats.unlocked')}</Text>
             <Text style={s.toastTitle}>{achToast.title}</Text>
           </View>
           <Text style={s.toastTrophy}>🏆</Text>
@@ -977,7 +982,8 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center',
     padding: 28, zIndex: 100, elevation: 100,
   },
-  storyBody: { fontFamily: F.body, fontSize: 18, color: C.text, lineHeight: 26, textAlign: 'center', marginBottom: 18 },
+  storyScroll: { alignSelf: 'stretch', maxHeight: SH * 0.42, marginBottom: 18 },
+  storyBody:   { fontFamily: F.body, fontSize: 18, color: C.text, lineHeight: 26, textAlign: 'center' },
   luCard: {
     width: '100%', maxWidth: 360, alignItems: 'center',
     backgroundColor: C.card, borderWidth: 2, borderColor: C.gold,

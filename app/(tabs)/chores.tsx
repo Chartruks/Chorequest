@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { calcLevel, calcTotalDamage, calcMaxHp, maxHpForLevel, getEquippedBonus, MAX_FLOOR } from '../../lib/towerEngine';
 import { playAttackSfx } from '../../lib/sfx';
+import { t } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import { C, F } from '../../constants/theme';
@@ -118,7 +119,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
       <SafeAreaView style={ms.container}>
         {/* Header */}
         <View style={ms.header}>
-          <Text style={ms.headerTitle}>ADD QUEST</Text>
+          <Text style={ms.headerTitle}>{t('cc.addQuest')}</Text>
           <Pressable onPress={() => { reset(); onClose(); }} style={ms.closeBtn}>
             <Text style={ms.closeTxt}>✕</Text>
           </Pressable>
@@ -127,7 +128,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
         <ScrollView contentContainerStyle={ms.scroll} showsVerticalScrollIndicator={false}>
 
           {/* Template picker */}
-          <Text style={ms.sectionLbl}>DAILY TEMPLATES</Text>
+          <Text style={ms.sectionLbl}>{t('cc.dailyTemplates')}</Text>
           <View style={ms.tplGrid}>
             {daily.map(t => (
               <Pressable key={t.title} style={[ms.tpl, selected?.title === t.title && ms.tplActive]} onPress={() => pick(t)}>
@@ -137,7 +138,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
             ))}
           </View>
 
-          <Text style={[ms.sectionLbl, { marginTop: 16 }]}>WEEKLY TEMPLATES</Text>
+          <Text style={[ms.sectionLbl, { marginTop: 16 }]}>{t('cc.weeklyTemplates')}</Text>
           <View style={ms.tplGrid}>
             {weekly.map(t => (
               <Pressable key={t.title} style={[ms.tpl, selected?.title === t.title && ms.tplActive]} onPress={() => pick(t)}>
@@ -149,11 +150,11 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
 
           {/* Edit form */}
           <View style={ms.formCard}>
-            <Text style={ms.sectionLbl}>QUEST DETAILS</Text>
+            <Text style={ms.sectionLbl}>{t('cc.questDetails')}</Text>
 
             <TextInput
               style={ms.input}
-              placeholder="QUEST TITLE"
+              placeholder={t('cc.questTitle')}
               placeholderTextColor={C.textDim}
               value={title}
               onChangeText={setTitle}
@@ -164,7 +165,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
               {(['daily', 'weekly'] as const).map(r => (
                 <Pressable key={r} style={[ms.toggleBtn, recurrence === r && ms.toggleBtnActive]} onPress={() => setRecurrence(r)}>
                   <Text style={[ms.toggleTxt, recurrence === r && ms.toggleTxtActive]}>
-                    {r === 'daily' ? 'DAILY · ⚡ WEAK' : 'WEEKLY · 💥 STRONG'}
+                    {r === 'daily' ? t('cc.daily') : t('cc.weekly')}
                   </Text>
                 </Pressable>
               ))}
@@ -174,7 +175,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
               style={({ pressed }) => [ms.saveBtn, saving && { opacity: 0.5 }, pressed && ms.saveBtnPressed]}
               onPress={save} disabled={saving || !title.trim()}
             >
-              <Text style={ms.saveTxt}>{saving ? 'ADDING…' : 'ADD TO HOUSEHOLD →'}</Text>
+              <Text style={ms.saveTxt}>{saving ? t('cc.adding') : t('cc.add')}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -205,23 +206,23 @@ function ConfirmChoreModal({ chore, busy, dead, reviveProgress, equipDmg, onClos
         {chore.description ? <Text style={cm.desc}>{chore.description}</Text> : null}
         <View style={cm.rewards}>
           {dead ? (
-            <Text style={[cm.chip, { color: C.hp }]}>💀 REVIVE {reviveProgress}/2</Text>
+            <Text style={[cm.chip, { color: C.hp }]}>{t('chores.reviveTag', { n: reviveProgress })}</Text>
           ) : (
             <Text style={[cm.chip, { color: strong ? '#ff7070' : C.gold }]}>
-              {strong ? '💥 STRONG' : '⚡ WEAK'} · ⚔️ {chore.damage_reward + equipDmg} DMG
+              {strong ? t('chores.tagStrong') : t('chores.tagWeak')} · ⚔️ {chore.damage_reward + equipDmg} DMG
             </Text>
           )}
         </View>
-        <Text style={cm.prompt}>Did you complete this chore?</Text>
+        <Text style={cm.prompt}>{t('chores.didComplete')}</Text>
         <View style={cm.actions}>
           <Pressable
             style={[cm.btn, { backgroundColor: dead ? C.hp : C.damage, borderBottomColor: dead ? '#2d6e43' : '#a03030' }, busy && { opacity: 0.5 }]}
             disabled={busy}
             onPress={onConfirm}
           >
-            <Text style={cm.btnTxt}>{busy ? '…' : dead ? 'CONFIRM REVIVE ✚' : 'CONFIRM ATTACK ⚔️'}</Text>
+            <Text style={cm.btnTxt}>{busy ? '…' : dead ? t('chores.confirmRevive') : t('chores.confirmAttack')}</Text>
           </Pressable>
-          <Pressable style={cm.cancelBtn} onPress={onClose} disabled={busy}><Text style={cm.cancelTxt}>CANCEL</Text></Pressable>
+          <Pressable style={cm.cancelBtn} onPress={onClose} disabled={busy}><Text style={cm.cancelTxt}>{t('chores.cancel')}</Text></Pressable>
         </View>
       </View>
     </View>
@@ -229,7 +230,7 @@ function ConfirmChoreModal({ chore, busy, dead, reviveProgress, equipDmg, onClos
 }
 
 // ── Main Screen ──────────────────────────────────────────────────
-export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose?: () => void; sheetMode?: boolean; onDefeat?: (levelUp: { from: number; to: number; hpGain: number } | null) => void }) {
+export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose?: () => void; sheetMode?: boolean; onDefeat?: (info: { levelUp: { from: number; to: number; hpGain: number } | null; clearedFloor: number }) => void }) {
   const { profile, refreshProfile } = useAuth();
   const [chores, setChores]           = useState<Chore[]>([]);
   const [playerItems, setPlayerItems] = useState<PlayerItem[]>([]);
@@ -348,7 +349,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
     setBusy(false);
     setSelected(null);
     await load();
-    if (defeated && onDefeat) onDefeat(levelInfo);   // parent queues level-up then story
+    if (defeated && onDefeat) onDefeat({ levelUp: levelInfo, clearedFloor: profile.tower_floor });
   }
 
   const weak   = chores.filter(c => c.recurrence !== 'weekly' && c.recurrence !== 'special');
@@ -410,9 +411,9 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
             </Pressable>
           )}
           <View>
-            <Text style={s.headerTitle}>{isDead ? '💀 DEFEATED' : '⚔️ ATTACK'}</Text>
+            <Text style={s.headerTitle}>{isDead ? t('chores.defeated') : t('chores.attack')}</Text>
             <Text style={s.headerSub}>
-              {isDead ? `DO ${2 - (profile.revive_progress ?? 0)} CHORE(S) TO REVIVE` : 'TAP A CHORE TO STRIKE'}
+              {isDead ? t('chores.reviveHint', { n: 2 - (profile.revive_progress ?? 0) }) : t('chores.tapToStrike')}
             </Text>
           </View>
         </View>
@@ -431,13 +432,13 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
       ) : chores.length === 0 ? (
         <View style={s.empty}>
           <Text style={s.emptyEmoji}>📋</Text>
-          <Text style={s.emptyTitle}>NO QUESTS YET</Text>
-          <Text style={s.emptyBody}>Tap + to add your first quest.</Text>
+          <Text style={s.emptyTitle}>{t('chores.noQuests')}</Text>
+          <Text style={s.emptyBody}>{t('chores.noQuestsHint')}</Text>
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-          {renderSection('⚡ WEAK ATTACKS', weak)}
-          {renderSection('💥 STRONG ATTACKS', strong)}
+          {renderSection(t('chores.weak'), weak)}
+          {renderSection(t('chores.strong'), strong)}
         </ScrollView>
       )}
 

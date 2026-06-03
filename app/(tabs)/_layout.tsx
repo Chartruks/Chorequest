@@ -5,9 +5,7 @@ export default function TabsLayout() {
     <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="chores" />
-      <Tabs.Screen name="character" />
       <Tabs.Screen name="store" />
-      <Tabs.Screen name="tower" />
     </Tabs>
   );
 }

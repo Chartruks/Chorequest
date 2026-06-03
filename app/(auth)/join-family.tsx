@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import CharacterPicker from '../../components/CharacterPicker';
+import { t } from '../../lib/i18n';
 import { C, F } from '../../constants/theme';
 
 type Step = 'code' | 'pick' | 'create';
@@ -30,13 +31,13 @@ export default function JoinFamily() {
 
   async function verifyCode() {
     const trimmed = code.trim().toUpperCase();
-    if (!trimmed) { Alert.alert('Error', 'Enter a family code.'); return; }
+    if (!trimmed) { Alert.alert(t('auth.error'), t('join.enterCodeErr')); return; }
     setLoading(true);
     const { data: hh, error } = await supabase
       .from('households').select('id, name').eq('invite_code', trimmed).single();
     if (error || !hh) {
       setLoading(false);
-      Alert.alert('CODE NOT FOUND', 'Check the code and try again.');
+      Alert.alert(t('join.codeNotFound'), t('join.codeNotFoundBody'));
       return;
     }
     const { data: members } = await supabase
@@ -57,13 +58,13 @@ export default function JoinFamily() {
       await ensureSession();
       await setActiveProfile(hero.id);   // RouteGuard navigates once profile loads
     } catch (e: any) {
-      Alert.alert('ERROR', e?.message ?? 'Could not load hero.');
+      Alert.alert(t('auth.error'), e?.message ?? '');
       setLoading(false);
     }
   }
 
   async function createHero() {
-    if (!name.trim()) { Alert.alert('Error', 'Enter your hero name.'); return; }
+    if (!name.trim()) { Alert.alert(t('auth.error'), t('join.enterName')); return; }
     if (!household)   return;
     setLoading(true);
     try {
@@ -81,7 +82,7 @@ export default function JoinFamily() {
       if (error || !data) throw error ?? new Error('Could not create hero.');
       await setActiveProfile(data.id);
     } catch (e: any) {
-      Alert.alert('ERROR', e?.message ?? 'Could not create hero.');
+      Alert.alert(t('auth.error'), e?.message ?? '');
       setLoading(false);
     }
   }
@@ -94,27 +95,27 @@ export default function JoinFamily() {
           onPress={() => step === 'code' ? router.back() : step === 'create' ? setStep('pick') : setStep('code')}
           style={s.back}
         >
-          <Text style={s.backText}>← BACK</Text>
+          <Text style={s.backText}>{t('join.back')}</Text>
         </Pressable>
 
         <View style={s.logoBox}><Text style={s.logoEmoji}>👨‍👩‍👧</Text></View>
-        <Text style={s.title}>JOIN A FAMILY</Text>
+        <Text style={s.title}>{t('join.title')}</Text>
 
         {step === 'code' && (
           <>
-            <Text style={s.subtitle}>ENTER THE CODE YOUR FAMILY LEADER GAVE YOU</Text>
+            <Text style={s.subtitle}>{t('join.enterCode')}</Text>
             <TextInput
               style={s.input}
-              placeholder="FAMILY CODE"
+              placeholder={t('join.familyCode')}
               placeholderTextColor={C.textDim}
               value={code}
-              onChangeText={t => setCode(t.toUpperCase())}
+              onChangeText={v => setCode(v.toUpperCase())}
               autoCapitalize="characters"
               autoCorrect={false}
               maxLength={12}
             />
             <Pressable style={({ pressed }) => [s.btn, loading && s.btnDisabled, pressed && s.btnPressed]} onPress={verifyCode} disabled={loading}>
-              <Text style={s.btnText}>{loading ? 'CHECKING…' : 'VERIFY CODE →'}</Text>
+              <Text style={s.btnText}>{loading ? t('join.checking') : t('join.verify')}</Text>
             </Pressable>
           </>
         )}
@@ -122,7 +123,7 @@ export default function JoinFamily() {
         {step === 'pick' && (
           <>
             <View style={s.householdBadge}>
-              <Text style={s.householdLabel}>JOINING</Text>
+              <Text style={s.householdLabel}>{t('join.joining')}</Text>
               <Text style={s.householdName}>{household?.name.toUpperCase()}</Text>
             </View>
 
@@ -130,17 +131,17 @@ export default function JoinFamily() {
               <ActivityIndicator color={C.primary} style={{ marginTop: 20 }} />
             ) : (
               <>
-                {heroes.length > 0 && <Text style={s.fieldLabel}>WHO ARE YOU?</Text>}
+                {heroes.length > 0 && <Text style={s.fieldLabel}>{t('join.whoAreYou')}</Text>}
                 {heroes.map(h => (
                   <Pressable key={h.id} style={({ pressed }) => [s.heroRow, pressed && { opacity: 0.7 }]} onPress={() => pickHero(h)}>
                     <Text style={s.heroEmoji}>🧑</Text>
-                    <Text style={s.heroName}>{(h.username ?? 'HERO').toUpperCase()}</Text>
+                    <Text style={s.heroName}>{(h.username ?? t('common.hero')).toUpperCase()}</Text>
                     <Text style={s.heroLv}>LV.{h.level}</Text>
                   </Pressable>
                 ))}
 
                 <Pressable style={({ pressed }) => [s.newBtn, pressed && s.btnPressed]} onPress={() => setStep('create')}>
-                  <Text style={s.newBtnText}>＋ NEW HERO</Text>
+                  <Text style={s.newBtnText}>{t('join.newHero')}</Text>
                 </Pressable>
               </>
             )}
@@ -150,14 +151,14 @@ export default function JoinFamily() {
         {step === 'create' && (
           <>
             <View style={s.householdBadge}>
-              <Text style={s.householdLabel}>JOINING</Text>
+              <Text style={s.householdLabel}>{t('join.joining')}</Text>
               <Text style={s.householdName}>{household?.name.toUpperCase()}</Text>
             </View>
 
-            <Text style={s.fieldLabel}>YOUR HERO NAME</Text>
+            <Text style={s.fieldLabel}>{t('auth.heroName')}</Text>
             <TextInput
               style={s.input}
-              placeholder="ENTER YOUR NAME"
+              placeholder={t('auth.yourName')}
               placeholderTextColor={C.textDim}
               value={name}
               onChangeText={setName}
@@ -165,11 +166,11 @@ export default function JoinFamily() {
               maxLength={20}
             />
 
-            <Text style={s.fieldLabel}>CHOOSE YOUR CHARACTER</Text>
+            <Text style={s.fieldLabel}>{t('auth.chooseCharacter')}</Text>
             <CharacterPicker value={character} onChange={setCharacter} />
 
             <Pressable style={({ pressed }) => [s.btn, loading && s.btnDisabled, pressed && s.btnPressed]} onPress={createHero} disabled={loading}>
-              <Text style={s.btnText}>{loading ? 'CREATING…' : 'START PLAYING →'}</Text>
+              <Text style={s.btnText}>{loading ? t('auth.creating') : t('join.startPlaying')}</Text>
             </Pressable>
           </>
         )}
