@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { calcLevel, calcTotalDamage, calcMaxHp, maxHpForLevel, getEquippedBonus, MAX_FLOOR } from '../../lib/towerEngine';
 import { playAttackSfx } from '../../lib/sfx';
 import { t } from '../../lib/i18n';
+import { choreTitle } from '../../lib/content';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import { C, F } from '../../constants/theme';
@@ -81,7 +82,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
 
   function pick(t: Template) {
     setSelected(t);
-    setTitle(t.title);
+    setTitle(choreTitle(t.title));
     setPoints(String(t.points_reward));
     setXp(String(t.xp_reward));
     setDmg(String(t.damage_reward));
@@ -133,7 +134,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
             {daily.map(t => (
               <Pressable key={t.title} style={[ms.tpl, selected?.title === t.title && ms.tplActive]} onPress={() => pick(t)}>
                 <Text style={ms.tplEmoji}>{CATEGORY_EMOJI[t.category] ?? '📋'}</Text>
-                <Text style={ms.tplTitle} numberOfLines={2}>{t.title.toUpperCase()}</Text>
+                <Text style={ms.tplTitle} numberOfLines={2}>{choreTitle(t.title).toUpperCase()}</Text>
               </Pressable>
             ))}
           </View>
@@ -143,7 +144,7 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
             {weekly.map(t => (
               <Pressable key={t.title} style={[ms.tpl, selected?.title === t.title && ms.tplActive]} onPress={() => pick(t)}>
                 <Text style={ms.tplEmoji}>{CATEGORY_EMOJI[t.category] ?? '📋'}</Text>
-                <Text style={ms.tplTitle} numberOfLines={2}>{t.title.toUpperCase()}</Text>
+                <Text style={ms.tplTitle} numberOfLines={2}>{choreTitle(t.title).toUpperCase()}</Text>
               </Pressable>
             ))}
           </View>

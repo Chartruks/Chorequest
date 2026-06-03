@@ -11,6 +11,7 @@ import { ACHIEVEMENTS, achievementProgress, achTitle, achDesc } from '../../lib/
 import { playSfx } from '../../lib/sfx';
 import { STORY_INTRO, floorStory } from '../../lib/story';
 import { t } from '../../lib/i18n';
+import { monsterName, itemName } from '../../lib/content';
 import {
   calcMaxHp, calcMonsterAttack, getEquippedBonus,
   nextAttackCountdown, xpForNextLevel,
@@ -464,7 +465,7 @@ export default function GameScreen() {
             }]}
           >
             <View style={s.monsterOverlayRow}>
-              <Text style={s.monsterOverlayName}>{floor?.monster_name.toUpperCase()}</Text>
+              <Text style={s.monsterOverlayName}>{floor ? monsterName(floor.floor, floor.monster_name).toUpperCase() : ''}</Text>
               <Text style={s.monsterOverlayHp}>{profile.monster_hp} / {floor?.monster_max_hp}</Text>
             </View>
             <View style={s.overlayTrack}>
@@ -479,7 +480,7 @@ export default function GameScreen() {
             <View style={s.enemyStats}>
               <Animated.View style={{ opacity: attackAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }}>
                 <View style={s.monsterRow}>
-                  <Text style={s.monsterName}>{floor.monster_name.toUpperCase()}</Text>
+                  <Text style={s.monsterName}>{monsterName(floor.floor, floor.monster_name).toUpperCase()}</Text>
                   <Text style={s.monsterHpVal}>{profile.monster_hp} / {floor.monster_max_hp}</Text>
                 </View>
                 <View style={s.track}>
@@ -669,7 +670,7 @@ export default function GameScreen() {
                     <View key={pi.id} style={[s.bagRow, pi.equipped && s.bagRowEquipped]}>
                       <Text style={s.bagEmoji}>{st.emoji}</Text>
                       <View style={{ flex: 1 }}>
-                        <Text style={s.bagName}>{st.name.toUpperCase()}{isConsumable && qty > 1 ? `  x${qty}` : ''}</Text>
+                        <Text style={s.bagName}>{itemName(st.name).toUpperCase()}{isConsumable && qty > 1 ? `  x${qty}` : ''}</Text>
                         <View style={s.bagStats}>
                           {st.damage_bonus > 0 && <Text style={[s.bagStat, { color: C.damage }]}>⚔️ +{st.damage_bonus}</Text>}
                           {st.hp_bonus > 0     && <Text style={[s.bagStat, { color: C.hp }]}>🛡️ +{st.hp_bonus}</Text>}

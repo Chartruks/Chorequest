@@ -9,6 +9,7 @@ import { Database } from '../../types/database';
 import { maxHpForLevel } from '../../lib/towerEngine';
 import HeroSprite from '../../components/HeroSprite';
 import { t } from '../../lib/i18n';
+import { itemName } from '../../lib/content';
 import { C, F } from '../../constants/theme';
 
 type StoreItem  = Database['public']['Tables']['store_items']['Row'];
@@ -316,7 +317,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
             return (
               <View style={[s.card, { borderTopColor: tColor, width: CARD_W }]}>
                 <Text style={s.itemEmoji}>{item.emoji}</Text>
-                <Text style={s.itemName} numberOfLines={2}>{item.name.toUpperCase()}</Text>
+                <Text style={s.itemName} numberOfLines={2}>{itemName(item.name).toUpperCase()}</Text>
                 {item.damage_bonus > 0 && <Text style={[s.stat, { color: C.damage }]}>+{item.damage_bonus} ⚔️</Text>}
                 {item.hp_bonus     > 0 && <Text style={[s.stat, { color: C.hp }]}>+{item.hp_bonus} 🛡️</Text>}
                 {item.heal_amount  > 0 && <Text style={[s.stat, { color: C.gold }]}>+{item.heal_amount > 900 ? 'FULL' : item.heal_amount} ❤️</Text>}
