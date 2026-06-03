@@ -125,9 +125,9 @@ export type Database = {
         Relationships: []
       }
       player_items: {
-        Row: { equipped: boolean; id: string; item_id: string; profile_id: string; purchased_at: string }
-        Insert: { equipped?: boolean; id?: string; item_id: string; profile_id: string; purchased_at?: string }
-        Update: { equipped?: boolean; id?: string; item_id?: string; profile_id?: string; purchased_at?: string }
+        Row: { equipped: boolean; id: string; item_id: string; profile_id: string; purchased_at: string; quantity: number }
+        Insert: { equipped?: boolean; id?: string; item_id: string; profile_id: string; purchased_at?: string; quantity?: number }
+        Update: { equipped?: boolean; id?: string; item_id?: string; profile_id?: string; purchased_at?: string; quantity?: number }
         Relationships: [
           { foreignKeyName: "player_items_item_id_fkey"; columns: ["item_id"]; isOneToOne: false; referencedRelation: "store_items"; referencedColumns: ["id"] },
           { foreignKeyName: "player_items_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }

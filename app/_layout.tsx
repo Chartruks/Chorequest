@@ -7,7 +7,21 @@ import { useFonts } from 'expo-font';
 import { PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { VT323_400Regular } from '@expo-google-fonts/vt323';
 import { View } from 'react-native';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { C } from '../constants/theme';
+
+// Looping background music for the whole app.
+function BackgroundMusic() {
+  const player = useAudioPlayer(require('../assets/music/theme.wav'));
+  useEffect(() => {
+    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+    player.loop = true;
+    player.volume = 0.4;
+    player.play();
+    return () => { try { player.pause(); } catch {} };
+  }, [player]);
+  return null;
+}
 
 function RouteGuard({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
@@ -41,6 +55,7 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
+      <BackgroundMusic />
       <RouteGuard>
         <StatusBar style="light" />
         <Stack screenOptions={{ headerShown: false }} />

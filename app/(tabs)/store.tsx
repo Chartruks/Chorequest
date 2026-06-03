@@ -1,20 +1,57 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Alert, Dimensions, FlatList, Modal,
-  Pressable, SafeAreaView, StyleSheet, Text, TextInput, View,
+  Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import { maxHpForLevel } from '../../lib/towerEngine';
+import HeroSprite from '../../components/HeroSprite';
 import { C, F } from '../../constants/theme';
 
 type StoreItem  = Database['public']['Tables']['store_items']['Row'];
 type Reward     = Database['public']['Tables']['rewards']['Row'];
-type PlayerItem = { id: string; item_id: string; equipped: boolean };
+type PlayerItem = { id: string; item_id: string; equipped: boolean; quantity: number };
 
 const SW = Dimensions.get('window').width;
 const CARD_W = Math.floor((SW - 24 - 16) / 3);
+// Carousel hero ≈ 60% of the in-game character (which fills ~half the screen width).
+const CAROUSEL = Math.round(SW * 0.27);
+
+const RARITIES = [
+  { key: 'common',   label: 'COMMON',   color: '#8aa0aa', count: 5 },
+  { key: 'uncommon', label: 'UNCOMMON', color: C.hp,      count: 5 },
+  { key: 'rare',     label: 'RARE',     color: C.primary, count: 5 },
+  { key: 'elite',    label: 'ELITE',    color: C.gold,    count: 5 },
+] as const;
+
+// Carousel of characters by rarity. Placeholder: all reuse hero 1's sprite,
+// only the starter is unlocked (coloured + animated); the rest are greyed/static.
+function CharacterCarousel() {
+  return (
+    <ScrollView contentContainerStyle={cc.list} showsVerticalScrollIndicator={false}>
+      {RARITIES.map(r => (
+        <View key={r.key} style={cc.section}>
+          <View style={[cc.tag, { borderColor: r.color }]}>
+            <Text style={[cc.tagText, { color: r.color }]}>{r.label}</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cc.rowScroll}>
+            {Array.from({ length: r.count }).map((_, i) => {
+              const unlocked = r.key === 'common' && i === 0;   // only the starter, for now
+              return (
+                <View key={i} style={[cc.card, { borderColor: unlocked ? r.color : C.border }]}>
+                  <HeroSprite size={CAROUSEL} unlocked={unlocked} />
+                  <Text style={[cc.cardName, unlocked && { color: r.color }]}>HERO {i + 1}</Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
 
 const FILTERS = ['character', 'weapon', 'armor', 'consumable', 'real_life'] as const;
 type Filter = typeof FILTERS[number];
@@ -101,7 +138,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     if (!profile) return;
     const q1 = supabase.from('store_items').select('*').order('sort_order');
-    const q2 = supabase.from('player_items').select('id, item_id, equipped').eq('profile_id', profile.id);
+    const q2 = supabase.from('player_items').select('id, item_id, equipped, quantity').eq('profile_id', profile.id);
     const q3 = profile.household_id
       ? supabase.from('rewards').select('*').eq('household_id', profile.household_id).order('created_at')
       : Promise.resolve({ data: [] as Reward[] });
@@ -113,6 +150,25 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
     });
   }, [profile?.id]);
 
+  async function refreshOwned() {
+    if (!profile) return;
+    const { data } = await supabase.from('player_items').select('id, item_id, equipped, quantity').eq('profile_id', profile.id);
+    setOwned(data ?? []);
+  }
+
+  async function equipItem(item: StoreItem) {
+    if (!profile) return;
+    // Unequip any same-type item, then equip the new one (weapon → left, armor → right).
+    const { data: pi } = await supabase.from('player_items').select('id, item_id').eq('profile_id', profile.id);
+    for (const o of pi ?? []) {
+      if (items.find(i => i.id === o.item_id)?.item_type === item.item_type) {
+        await supabase.from('player_items').update({ equipped: false }).eq('id', o.id);
+      }
+    }
+    await supabase.from('player_items').update({ equipped: true }).eq('profile_id', profile.id).eq('item_id', item.id);
+    await refreshOwned();
+  }
+
   async function buy(item: StoreItem) {
     if (!profile) return;
     if (profile.points < item.cost) {
@@ -120,28 +176,32 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
       return;
     }
     setBuying(item.id);
-    if (item.item_type === 'consumable') {
-      // Heal capped at level max + equipped-armor bonus.
-      const equipHp = owned
-        .filter(o => o.equipped)
-        .reduce((sum, o) => sum + (items.find(i => i.id === o.item_id)?.hp_bonus ?? 0), 0);
-      const maxHp = maxHpForLevel(profile.level) + equipHp;
-      const newHp = Math.min(maxHp, profile.player_hp + item.heal_amount);
-      await supabase.from('profiles').update({ points: profile.points - item.cost, player_hp: newHp, gold_spent: (profile.gold_spent ?? 0) + item.cost } as any).eq('id', profile.id);
-      await refreshProfile();
-      Alert.alert('USED!', `Restored ${item.heal_amount > 900 ? 'all' : item.heal_amount} HP.`);
+
+    // Pay, then add to the bag (stacking quantity for repeats).
+    await supabase.from('profiles')
+      .update({ points: profile.points - item.cost, gold_spent: (profile.gold_spent ?? 0) + item.cost } as any)
+      .eq('id', profile.id);
+
+    const existing = owned.find(o => o.item_id === item.id);
+    if (existing) {
+      await supabase.from('player_items').update({ quantity: (existing.quantity ?? 1) + 1 }).eq('id', existing.id);
     } else {
-      // Equip: unequip any same-type item, then equip this one. Max HP from gear
-      // is computed dynamically (calcMaxHp), so we don't bump player_max_hp here.
-      const sameType = owned.filter(o => items.find(i => i.id === o.item_id)?.item_type === item.item_type && o.equipped);
-      for (const old of sameType) await supabase.from('player_items').update({ equipped: false }).eq('id', old.id);
-      await supabase.from('player_items').upsert({ profile_id: profile.id, item_id: item.id, equipped: true }, { onConflict: 'profile_id,item_id' });
-      await supabase.from('profiles').update({ points: profile.points - item.cost, gold_spent: (profile.gold_spent ?? 0) + item.cost } as any).eq('id', profile.id);
-      await refreshProfile();
-      const { data: pi } = await supabase.from('player_items').select('id, item_id, equipped').eq('profile_id', profile.id);
-      setOwned(pi ?? []);
+      await supabase.from('player_items').insert({ profile_id: profile.id, item_id: item.id, quantity: 1, equipped: false } as any);
     }
+
+    await refreshProfile();
+    await refreshOwned();
     setBuying(null);
+
+    // Gear can be equipped; everything lands in the bag either way.
+    if (item.item_type === 'weapon' || item.item_type === 'armor') {
+      Alert.alert(`Bought ${item.name}`, 'Equip it now?', [
+        { text: 'Keep in bag', style: 'cancel' },
+        { text: 'Equip', onPress: () => equipItem(item) },
+      ]);
+    } else {
+      Alert.alert('Added to bag', `${item.name} is in your bag.`);
+    }
   }
 
   async function redeem(reward: Reward) {
@@ -160,7 +220,8 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   if (!profile) return null;
 
   const typeColor = TYPE_COLOR[filter] ?? C.primary;
-  const isRealLife = filter === 'real_life';
+  const isRealLife  = filter === 'real_life';
+  const isCharacter = filter === 'character';
   const filteredItems = items.filter(i => i.item_type === filter);
 
   return (
@@ -194,7 +255,10 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
         ))}
       </View>
 
-      {loading ? <ActivityIndicator color={C.primary} style={{ marginTop: 40 }} /> : isRealLife ? (
+      {loading ? <ActivityIndicator color={C.primary} style={{ marginTop: 40 }} /> : isCharacter ? (
+        /* ── Character carousel by rarity ── */
+        <CharacterCarousel />
+      ) : isRealLife ? (
         /* ── Real-life rewards grid ── */
         <FlatList
           data={rewards}
@@ -359,4 +423,17 @@ const rm = StyleSheet.create({
   saveBtn:       { backgroundColor: '#c77dff', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 4, borderBottomColor: '#7b2fff', marginTop: 20 },
   saveBtnPressed:{ borderBottomWidth: 0, marginTop: 24 },
   saveTxt:       { fontFamily: F.pixel, fontSize: 9, color: C.bg, letterSpacing: 1 },
+});
+
+const cc = StyleSheet.create({
+  list:     { padding: 14, gap: 18, paddingBottom: 32 },
+  section:  { gap: 10 },
+  tag:      { alignSelf: 'flex-start', borderWidth: 2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  tagText:  { fontFamily: F.pixel, fontSize: 8, letterSpacing: 1 },
+  rowScroll:{ gap: 12, paddingRight: 14 },
+  card: {
+    backgroundColor: C.card, borderWidth: 2, borderRadius: 14,
+    padding: 8, alignItems: 'center', gap: 6,
+  },
+  cardName: { fontFamily: F.pixel, fontSize: 7, color: C.textMuted, letterSpacing: 1 },
 });

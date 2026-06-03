@@ -8,6 +8,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.106.2",
     "expo": "~54.0.0",
+    "expo-audio": "^1.0.13",
     "expo-constants": "~18.0.13",
     "expo-font": "^56.0.5",
     "expo-linking": "~8.0.12",

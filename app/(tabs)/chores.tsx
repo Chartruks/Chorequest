@@ -4,7 +4,8 @@ import {
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { calcLevel, calcTotalDamage, calcMaxHp, maxHpForLevel, MAX_FLOOR } from '../../lib/towerEngine';
+import { calcLevel, calcTotalDamage, calcMaxHp, maxHpForLevel, getEquippedBonus, MAX_FLOOR } from '../../lib/towerEngine';
+import { playAttackSfx } from '../../lib/sfx';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import { C, F } from '../../constants/theme';
@@ -183,18 +184,19 @@ function CreateChoreModal({ visible, householdId, createdBy, onClose, onCreated 
 }
 
 // ── Confirm Modal ────────────────────────────────────────────────
-function ConfirmChoreModal({ chore, busy, dead, reviveProgress, onClose, onConfirm }: {
+function ConfirmChoreModal({ chore, busy, dead, reviveProgress, equipDmg, onClose, onConfirm }: {
   chore: Chore | null;
   busy: boolean;
   dead: boolean;
   reviveProgress: number;
+  equipDmg: number;
   onClose: () => void;
   onConfirm: () => void;
 }) {
   if (!chore) return null;
   const strong = chore.recurrence === 'weekly' || chore.recurrence === 'special';
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <View style={cm.overlay}>
       <Pressable style={cm.backdrop} onPress={onClose} />
       <View style={cm.sheet}>
         <View style={cm.handle} />
@@ -206,7 +208,7 @@ function ConfirmChoreModal({ chore, busy, dead, reviveProgress, onClose, onConfi
             <Text style={[cm.chip, { color: C.hp }]}>💀 REVIVE {reviveProgress}/2</Text>
           ) : (
             <Text style={[cm.chip, { color: strong ? '#ff7070' : C.gold }]}>
-              {strong ? '💥 STRONG' : '⚡ WEAK'} · ⚔️ {chore.damage_reward} DMG
+              {strong ? '💥 STRONG' : '⚡ WEAK'} · ⚔️ {chore.damage_reward + equipDmg} DMG
             </Text>
           )}
         </View>
@@ -222,12 +224,12 @@ function ConfirmChoreModal({ chore, busy, dead, reviveProgress, onClose, onConfi
           <Pressable style={cm.cancelBtn} onPress={onClose} disabled={busy}><Text style={cm.cancelTxt}>CANCEL</Text></Pressable>
         </View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 // ── Main Screen ──────────────────────────────────────────────────
-export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose?: () => void; sheetMode?: boolean; onDefeat?: () => void }) {
+export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose?: () => void; sheetMode?: boolean; onDefeat?: (levelUp: { from: number; to: number; hpGain: number } | null) => void }) {
   const { profile, refreshProfile } = useAuth();
   const [chores, setChores]           = useState<Chore[]>([]);
   const [playerItems, setPlayerItems] = useState<PlayerItem[]>([]);
@@ -288,6 +290,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
 
     const dead = profile.player_hp <= 0;
     let defeated = false;
+    let levelInfo: { from: number; to: number; hpGain: number } | null = null;
 
     if (dead) {
       // Revive: 2 chores to come back to life
@@ -298,6 +301,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
       updates.chores_done = (profile.chores_done ?? 0) + 1;
       await supabase.from('profiles').update(updates).eq('id', profile.id);
     } else {
+      playAttackSfx(profile.character_type);   // per-character attack sound
       const damage       = calcTotalDamage(chore.damage_reward, profile, playerItems);
       const newMonsterHp = Math.max(0, profile.monster_hp - damage);
       defeated = newMonsterHp === 0;
@@ -315,6 +319,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
         updates.xp     = newXp;
         updates.points = profile.points + (cur?.money_reward ?? 0);
         if (newLevel > profile.level) {
+          levelInfo             = { from: profile.level, to: newLevel, hpGain: maxHpForLevel(newLevel) - maxHpForLevel(profile.level) };
           updates.level         = newLevel;
           updates.player_max_hp = maxHpForLevel(newLevel);
           updates.player_hp     = maxHpForLevel(newLevel); // heal to full on level up
@@ -343,7 +348,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
     setBusy(false);
     setSelected(null);
     await load();
-    if (defeated && onDefeat) onDefeat();   // parent shows a story snippet
+    if (defeated && onDefeat) onDefeat(levelInfo);   // parent queues level-up then story
   }
 
   const weak   = chores.filter(c => c.recurrence !== 'weekly' && c.recurrence !== 'special');
@@ -351,6 +356,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
   // Leaders manage the family's chores; solo players (no household) manage their own.
   const canManage = !!profile && (profile.is_leader || !profile.household_id);
   const isDead    = !!profile && profile.player_hp <= 0;
+  const equipDmg  = getEquippedBonus(playerItems).damage;   // equipped weapon bonus
 
   function renderChore(item: Chore) {
     return (
@@ -365,7 +371,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
         <View style={s.cardTop}>
           <Text style={s.cardEmoji}>{CATEGORY_EMOJI[item.category] ?? '📋'}</Text>
           <View style={s.cardTopRight}>
-            <Text style={[s.cardDmg, { color: C.damage }]}>⚔️ {item.damage_reward}</Text>
+            <Text style={[s.cardDmg, { color: C.damage }]}>⚔️ {item.damage_reward + equipDmg}</Text>
           </View>
         </View>
         <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
@@ -450,6 +456,7 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
         busy={busy}
         dead={isDead}
         reviveProgress={profile.revive_progress ?? 0}
+        equipDmg={equipDmg}
         onClose={() => setSelected(null)}
         onConfirm={() => selected && executeAttack(selected)}
       />
@@ -552,6 +559,7 @@ const ms = StyleSheet.create({
 });
 
 const cm = StyleSheet.create({
+  overlay:   { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, elevation: 50 },
   backdrop:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)' },
   sheet: {
     backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
