@@ -52,7 +52,10 @@ let floorsSql='insert into tower_floors (floor, monster_name, monster_emoji, mon
 const rows=[];
 for(let f=1;f<=F;f++){
   const L=levelForFloor(f), b=boss(f);
-  const H=Math.max(1,round(TKILL(f)*CPD*intendedDmg(f)));
+  // Pre-store floors (1..storeFloor-1) only have the +1 starter, so the formula rounds
+  // them all to ~2 HP. Override with a gentle linear ramp up to floor `storeFloor`'s HP
+  // so each early floor feels like a distinct step (2,3,4,… → 10 at floor 9).
+  const H = f < storeFloor ? f + 1 : Math.max(1,round(TKILL(f)*CPD*intendedDmg(f)));
   const interval=clamp(round(24-16*(f/F)),8,24);
   const intendedLoss=BETA(f)*HP(L)*(b?BOSS_MD:1);
   const ticks=Math.max(1, TKILL(f)*24/interval);
