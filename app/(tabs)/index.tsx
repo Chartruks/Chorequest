@@ -16,6 +16,7 @@ import {
   calcMaxHp, calcMonsterAttack, getEquippedBonus,
   nextAttackCountdown, xpForNextLevel,
 } from '../../lib/towerEngine';
+import { maxHpForLevel } from '../../lib/towerEngine';
 import { SKILLS, getSkills, spentPoints } from '../../lib/skills';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
@@ -339,9 +340,11 @@ export default function GameScreen() {
             await supabase.from('player_items').delete().eq('profile_id', profile.id);
             await supabase.from('profiles').update({
               level: 1, xp: 0, points: 0, tower_floor: 1,
-              player_hp: 5, player_max_hp: 5,
+              player_hp: maxHpForLevel(1), player_max_hp: maxHpForLevel(1),
               monster_hp: f1?.monster_max_hp ?? 1,
               revive_progress: 0,
+              // Clear all earned currencies & skills too (full wipe).
+              gems: 0, tokens: 0, skill_points: 0, skills: {},
               monsters_defeated: 0, gold_spent: 0, deaths: 0, revives: 0, chores_done: 0,
               last_monster_attack: new Date().toISOString(),
             } as any).eq('id', profile.id);
