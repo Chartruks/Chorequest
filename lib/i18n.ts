@@ -166,6 +166,20 @@ const en: Dict = {
   'store.goldCost': 'GOLD COST',
   'store.addRewardBtn': 'ADD REWARD →',
   'store.saving': 'SAVING…',
+  'store.legendary': 'LEGENDARY',
+  'store.use': 'USE',
+  'store.active': 'ACTIVE',
+  'store.nowPlaying': 'Now playing as {name}',
+  'store.getGems': 'GET GEMS',
+  'store.gemShop': '💎 GEM SHOP',
+  'store.gemPack': '{n} GEMS',
+  'store.bestValue': 'BEST VALUE',
+  'store.buy': 'BUY',
+  'store.notEnoughGems': 'NOT ENOUGH GEMS',
+  'store.notEnoughGemsBody': 'Need 💎{cost}, have 💎{have}.',
+  'store.iapSoon': 'COMING SOON',
+  'store.iapSoonBody': 'In-app purchases will be available soon.',
+  'store.gemsGranted': 'Added 💎{n} to your balance.',
 };
 
 const pt: Dict = {
@@ -328,6 +342,20 @@ const pt: Dict = {
   'store.goldCost': 'CUSTO EM OURO',
   'store.addRewardBtn': 'ADICIONAR PRÉMIO →',
   'store.saving': 'A GUARDAR…',
+  'store.legendary': 'LENDÁRIO',
+  'store.use': 'USAR',
+  'store.active': 'ATIVO',
+  'store.nowPlaying': 'A jogar como {name}',
+  'store.getGems': 'OBTER GEMAS',
+  'store.gemShop': '💎 LOJA DE GEMAS',
+  'store.gemPack': '{n} GEMAS',
+  'store.bestValue': 'MELHOR VALOR',
+  'store.buy': 'COMPRAR',
+  'store.notEnoughGems': 'GEMAS INSUFICIENTES',
+  'store.notEnoughGemsBody': 'Precisas de 💎{cost}, tens 💎{have}.',
+  'store.iapSoon': 'EM BREVE',
+  'store.iapSoonBody': 'As compras na aplicação estarão disponíveis em breve.',
+  'store.gemsGranted': 'Adicionado 💎{n} ao teu saldo.',
 };
 
 const DICTS = { en, pt };

@@ -22,7 +22,7 @@ export type Database = {
           household_id: string | null; id: string; is_leader: boolean
           last_monster_attack: string; level: number; monster_hp: number
           player_hp: number; player_max_hp: number; points: number
-          revive_progress: number; push_token: string | null
+          revive_progress: number; push_token: string | null; gems: number
           monsters_defeated: number; gold_spent: number; deaths: number
           revives: number; chores_done: number
           role: string | null; tower_floor: number; username: string | null; xp: number
@@ -32,7 +32,7 @@ export type Database = {
           household_id?: string | null; id?: string; is_leader?: boolean
           last_monster_attack?: string; level?: number; monster_hp?: number
           player_hp?: number; player_max_hp?: number; points?: number
-          revive_progress?: number; push_token?: string | null
+          revive_progress?: number; push_token?: string | null; gems?: number
           monsters_defeated?: number; gold_spent?: number; deaths?: number
           revives?: number; chores_done?: number
           role?: string | null; tower_floor?: number; username?: string | null; xp?: number
@@ -42,7 +42,7 @@ export type Database = {
           household_id?: string | null; id?: string; is_leader?: boolean
           last_monster_attack?: string; level?: number; monster_hp?: number
           player_hp?: number; player_max_hp?: number; points?: number
-          revive_progress?: number; push_token?: string | null
+          revive_progress?: number; push_token?: string | null; gems?: number
           monsters_defeated?: number; gold_spent?: number; deaths?: number
           revives?: number; chores_done?: number
           role?: string | null; tower_floor?: number; username?: string | null; xp?: number
@@ -116,16 +116,19 @@ export type Database = {
           cost: number; damage_bonus: number; description: string | null
           emoji: string; heal_amount: number; hp_bonus: number; id: string
           is_character: boolean; item_type: string; name: string; sort_order: number
+          rarity: string; premium_cost: number
         }
         Insert: {
           cost: number; damage_bonus?: number; description?: string | null
           emoji?: string; heal_amount?: number; hp_bonus?: number; id?: string
           is_character?: boolean; item_type: string; name: string; sort_order?: number
+          rarity?: string; premium_cost?: number
         }
         Update: {
           cost?: number; damage_bonus?: number; description?: string | null
           emoji?: string; heal_amount?: number; hp_bonus?: number; id?: string
           is_character?: boolean; item_type?: string; name?: string; sort_order?: number
+          rarity?: string; premium_cost?: number
         }
         Relationships: []
       }

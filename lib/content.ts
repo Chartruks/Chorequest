@@ -22,21 +22,51 @@ export function monsterName(floor: number, fallback: string): string {
 
 // ── Store items (keyed by English name). PT [name, description]. ──
 const ITEM_PT: Record<string, [string, string]> = {
-  'Survivor':        ['Sobrevivente',         'O teu herói inicial.'],
-  'Wooden Sword':    ['Espada de Madeira',    'Uma lâmina inicial robusta. +1 ataque.'],
-  'Lucky Charm':     ['Amuleto da Sorte',     'Um pouco de sorte. +1 ataque.'],
-  'Stone Axe':       ['Machado de Pedra',     'Pesado e fiável. +2 ataque.'],
-  'Rune Stone':      ['Pedra Rúnica',         'Gravada com poder. +2 ataque.'],
-  'Iron Sword':      ['Espada de Ferro',      'Um fio de aço forjado. +3 ataque.'],
-  'Steel Blade':     ['Lâmina de Aço',        'A arma de um guerreiro. +4 ataque.'],
-  "Knight's Blade":  ['Lâmina do Cavaleiro',  'Reluzente e mortal. +6 ataque.'],
+  // Armor
   'Cloth Tunic':     ['Túnica de Pano',       'Proteção simples. +2 HP.'],
   'Leather Armor':   ['Armadura de Couro',    'Couro resistente. +4 HP.'],
   'Chainmail':       ['Cota de Malha',        'Anéis entrelaçados. +7 HP.'],
   'Plate Armor':     ['Armadura de Placas',   'Proteção total. +12 HP.'],
+  // Consumables
   'Bread':           ['Pão',                  'Uma dentada rápida. Cura 3 HP.'],
   'Health Potion':   ['Poção de Vida',        'Restaura 10 HP.'],
   'Elixir':          ['Elixir',               'Restaura todo o HP.'],
+  // Weapons — common
+  'Wooden Sword':          ['Espada de Madeira',    'Uma lâmina inicial robusta.'],
+  'Rusty Dagger':          ['Adaga Enferrujada',    'Pequena mas afiada.'],
+  "Hunter's Sling":        ['Funda de Caçador',     'Atira pedras à distância.'],
+  'Oak Club':              ['Clava de Carvalho',    'Madeira pesada e sólida.'],
+  // Weapons — uncommon
+  'Stone Axe':             ['Machado de Pedra',     'Pesado e fiável.'],
+  'Short Bow':             ['Arco Curto',           'Rápido e preciso.'],
+  'Bronze Spear':          ['Lança de Bronze',      'Alcance e perfuração.'],
+  'Spiked Mace':           ['Maça com Espigões',    'Esmaga qualquer armadura.'],
+  // Weapons — rare
+  'Iron Sword':            ['Espada de Ferro',      'Um fio de aço forjado.'],
+  'Battle Axe':            ['Machado de Batalha',   'Feito para a guerra.'],
+  'Crossbow':              ['Besta',                'Virotes que furam tudo.'],
+  'War Halberd':           ['Alabarda de Guerra',   'Lâmina e ponta numa só arma.'],
+  // Weapons — elite
+  'Steel Greatsword':      ['Montante de Aço',      'Uma lâmina enorme de aço.'],
+  "Knight's Blade":        ['Lâmina do Cavaleiro',  'Reluzente e mortal.'],
+  'Warhammer':             ['Martelo de Guerra',    'Um golpe esmagador.'],
+  'Obsidian Glaive':       ['Glaive de Obsidiana',  'Vidro vulcânico afiado.'],
+  // Weapons — legendary
+  'Dragonfang Blade':      ['Lâmina Presa-de-Dragão', 'Forjada com presas de dragão.'],
+  'Soulreaver Scythe':     ['Foice Ceifa-Almas',    'Ceifa a própria alma.'],
+  'Celestial Edge':        ['Gume Celestial',       'Brilha com luz divina.'],
+  'Underworld Greatsword': ['Montante do Submundo', 'A arma do próprio senhor das trevas.'],
+  // Characters
+  'Survivor':            ['Sobrevivente',         'O teu herói inicial.'],
+  'Squire':              ['Escudeiro',            'Um aprendiz determinado.'],
+  'Knight':              ['Cavaleiro',            'Honra e aço.'],
+  'Ranger':              ['Patrulheiro',          'Mestre da natureza selvagem.'],
+  'Sorcerer':            ['Feiticeiro',           'Domina as artes arcanas.'],
+  'Berserker':           ['Berserker',            'Fúria sem limites.'],
+  'Paladin':             ['Paladino',             'Um campeão sagrado.'],
+  'Shadowblade':         ['Lâmina Sombria',       'Mata sem fazer um som.'],
+  'Dragon Knight':       ['Cavaleiro Dragão',     'Cavalga a fúria dos dragões.'],
+  'Underworld Champion': ['Campeão do Submundo',  'Erguido das próprias trevas.'],
 };
 export function itemName(enName: string): string {
   return LANG === 'pt' ? (ITEM_PT[enName]?.[0] ?? enName) : enName;

@@ -654,7 +654,7 @@ export default function GameScreen() {
               </Pressable>
               <Text style={[s.guildTitle, { color: C.primary }]}>{t('bag.title')}</Text>
             </View>
-            {playerItems.length === 0 ? (
+            {playerItems.filter((pi: PlayerItem) => pi.store_items.item_type !== 'character').length === 0 ? (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <Text style={{ fontSize: 40 }}>🎒</Text>
                 <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>{t('bag.empty')}</Text>
@@ -662,7 +662,7 @@ export default function GameScreen() {
               </View>
             ) : (
               <ScrollView contentContainerStyle={s.bagList}>
-                {playerItems.map((pi: PlayerItem) => {
+                {playerItems.filter((pi: PlayerItem) => pi.store_items.item_type !== 'character').map((pi: PlayerItem) => {
                   const st = pi.store_items;
                   const isConsumable = st.item_type === 'consumable';
                   const qty = pi.quantity ?? 1;

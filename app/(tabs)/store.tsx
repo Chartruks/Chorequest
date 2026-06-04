@@ -6,7 +6,6 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
-import { maxHpForLevel } from '../../lib/towerEngine';
 import HeroSprite from '../../components/HeroSprite';
 import { t } from '../../lib/i18n';
 import { itemName } from '../../lib/content';
@@ -22,38 +21,20 @@ const CARD_W = Math.floor((SW - 24 - 16) / 3);
 const CAROUSEL = Math.round(SW * 0.27);
 
 const RARITIES = [
-  { key: 'common',   label: 'COMMON',   color: '#8aa0aa', count: 5 },
-  { key: 'uncommon', label: 'UNCOMMON', color: C.hp,      count: 5 },
-  { key: 'rare',     label: 'RARE',     color: C.primary, count: 5 },
-  { key: 'elite',    label: 'ELITE',    color: C.gold,    count: 5 },
+  { key: 'common',    color: '#8aa0aa' },
+  { key: 'uncommon',  color: C.hp },
+  { key: 'rare',      color: C.primary },
+  { key: 'elite',     color: C.gold },
+  { key: 'legendary', color: '#ff7b00' },
 ] as const;
 
-// Carousel of characters by rarity. Placeholder: all reuse hero 1's sprite,
-// only the starter is unlocked (coloured + animated); the rest are greyed/static.
-function CharacterCarousel() {
-  return (
-    <ScrollView contentContainerStyle={cc.list} showsVerticalScrollIndicator={false}>
-      {RARITIES.map(r => (
-        <View key={r.key} style={cc.section}>
-          <View style={[cc.tag, { borderColor: r.color }]}>
-            <Text style={[cc.tagText, { color: r.color }]}>{t(`store.${r.key}`)}</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cc.rowScroll}>
-            {Array.from({ length: r.count }).map((_, i) => {
-              const unlocked = r.key === 'common' && i === 0;   // only the starter, for now
-              return (
-                <View key={i} style={[cc.card, { borderColor: unlocked ? r.color : C.border }]}>
-                  <HeroSprite size={CAROUSEL} unlocked={unlocked} />
-                  <Text style={[cc.cardName, unlocked && { color: r.color }]}>{t('store.heroN', { n: i + 1 })}</Text>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </View>
-      ))}
-    </ScrollView>
-  );
-}
+// Gem packs (purchased via IAP). Prices are display-only until native IAP is wired.
+const GEM_PACKS = [
+  { gems: 80,   price: '$0.99' },
+  { gems: 250,  price: '$2.99', best: true },
+  { gems: 700,  price: '$6.99' },
+  { gems: 1500, price: '$12.99' },
+];
 
 const FILTERS = ['character', 'weapon', 'armor', 'consumable', 'real_life'] as const;
 type Filter = typeof FILTERS[number];
@@ -64,6 +45,9 @@ const FILTER_KEY: Record<Filter, string> = {
 const TYPE_COLOR: Record<string, string> = {
   character: C.primary, weapon: C.damage, armor: C.hp, consumable: C.gold, real_life: '#c77dff',
 };
+
+const isPremium = (i: StoreItem) => i.premium_cost > 0;
+const isFree    = (i: StoreItem) => i.premium_cost === 0 && i.cost === 0;
 
 // ── Add Reward Modal ──────────────────────────────────────────────
 function AddRewardModal({ visible, householdId, createdBy, onClose, onSaved }: {
@@ -126,6 +110,46 @@ function AddRewardModal({ visible, householdId, createdBy, onClose, onSaved }: {
   );
 }
 
+// ── Gem Shop Modal (IAP) ──────────────────────────────────────────
+function GemShopModal({ visible, balance, busy, onClose, onBuy }: {
+  visible: boolean; balance: number; busy: boolean;
+  onClose: () => void; onBuy: (pack: typeof GEM_PACKS[number]) => void;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={rm.container}>
+        <View style={rm.header}>
+          <Text style={[rm.headerTitle, { color: '#ff7b00' }]}>{t('store.gemShop')}</Text>
+          <Pressable onPress={onClose} style={rm.closeBtn}>
+            <Text style={rm.closeTxt}>✕</Text>
+          </Pressable>
+        </View>
+
+        <View style={gm.balanceRow}>
+          <Text style={gm.balanceTxt}>💎 {balance}</Text>
+        </View>
+
+        <ScrollView contentContainerStyle={gm.list}>
+          {GEM_PACKS.map(pack => (
+            <View key={pack.gems} style={[gm.pack, pack.best && gm.packBest]}>
+              {pack.best && <View style={gm.bestTag}><Text style={gm.bestTagTxt}>{t('store.bestValue')}</Text></View>}
+              <Text style={gm.packGems}>💎 {pack.gems}</Text>
+              <Text style={gm.packLabel}>{t('store.gemPack', { n: pack.gems })}</Text>
+              <Pressable
+                style={({ pressed }) => [gm.buyBtn, busy && { opacity: 0.5 }, pressed && gm.buyBtnPressed]}
+                disabled={busy}
+                onPress={() => onBuy(pack)}
+              >
+                <Text style={gm.buyTxt}>{pack.price}</Text>
+              </Pressable>
+            </View>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
 // ── Main Screen ───────────────────────────────────────────────────
 export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   const { profile, refreshProfile } = useAuth();
@@ -136,6 +160,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   const [loading, setLoading]   = useState(true);
   const [buying, setBuying]     = useState<string | null>(null);
   const [showAddReward, setShowAddReward] = useState(false);
+  const [showGemShop, setShowGemShop]     = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -171,18 +196,34 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
     await refreshOwned();
   }
 
+  async function selectCharacter(item: StoreItem) {
+    if (!profile) return;
+    await supabase.from('profiles').update({ character_type: item.id } as any).eq('id', profile.id);
+    await refreshProfile();
+    Alert.alert(t('store.active'), t('store.nowPlaying', { name: itemName(item.name) }));
+  }
+
   async function buy(item: StoreItem) {
     if (!profile) return;
-    if (profile.points < item.cost) {
-      Alert.alert(t('store.notEnough'), t('store.notEnoughBody', { cost: item.cost, have: profile.points }));
+    const usesGems = isPremium(item);
+    const price    = usesGems ? item.premium_cost : item.cost;
+    const balance  = usesGems ? (profile.gems ?? 0) : profile.points;
+
+    if (price > 0 && balance < price) {
+      if (usesGems) Alert.alert(t('store.notEnoughGems'), t('store.notEnoughGemsBody', { cost: price, have: balance }));
+      else          Alert.alert(t('store.notEnough'),     t('store.notEnoughBody',     { cost: price, have: balance }));
       return;
     }
     setBuying(item.id);
 
-    // Pay, then add to the bag (stacking quantity for repeats).
-    await supabase.from('profiles')
-      .update({ points: profile.points - item.cost, gold_spent: (profile.gold_spent ?? 0) + item.cost } as any)
-      .eq('id', profile.id);
+    // Pay with the right currency, then add to the bag (stacking quantity for repeats).
+    if (usesGems) {
+      await supabase.from('profiles').update({ gems: balance - price } as any).eq('id', profile.id);
+    } else {
+      await supabase.from('profiles')
+        .update({ points: profile.points - price, gold_spent: (profile.gold_spent ?? 0) + price } as any)
+        .eq('id', profile.id);
+    }
 
     const existing = owned.find(o => o.item_id === item.id);
     if (existing) {
@@ -195,15 +236,131 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
     await refreshOwned();
     setBuying(null);
 
-    // Gear can be equipped; everything lands in the bag either way.
-    if (item.item_type === 'weapon' || item.item_type === 'armor') {
-      Alert.alert(t('store.bought', { name: item.name }), t('store.equipNow'), [
+    // Characters become playable immediately; gear can be equipped; rest lands in the bag.
+    if (item.item_type === 'character') {
+      await selectCharacter(item);
+    } else if (item.item_type === 'weapon' || item.item_type === 'armor') {
+      Alert.alert(t('store.bought', { name: itemName(item.name) }), t('store.equipNow'), [
         { text: t('store.keepInBag'), style: 'cancel' },
         { text: t('store.equip'), onPress: () => equipItem(item) },
       ]);
     } else {
-      Alert.alert(t('store.addedBag'), t('store.addedBagBody', { name: item.name }));
+      Alert.alert(t('store.addedBag'), t('store.addedBagBody', { name: itemName(item.name) }));
     }
+  }
+
+  async function buyGemPack(pack: typeof GEM_PACKS[number]) {
+    if (!profile) return;
+    setBuying('gems');
+    // TODO: wire native in-app purchases (expo StoreKit / Google Play Billing) here.
+    if (__DEV__) {
+      // Dev affordance so the premium shop is testable before IAP is integrated.
+      await supabase.from('profiles').update({ gems: (profile.gems ?? 0) + pack.gems } as any).eq('id', profile.id);
+      await refreshProfile();
+      setBuying(null);
+      Alert.alert(t('store.gemShop'), t('store.gemsGranted', { n: pack.gems }));
+    } else {
+      setBuying(null);
+      Alert.alert(t('store.iapSoon'), t('store.iapSoonBody'));
+    }
+  }
+
+  if (!profile) return null;
+
+  const isRealLife  = filter === 'real_life';
+  const isCharacter = filter === 'character';
+  const isWeapon    = filter === 'weapon';
+
+  // Active character: the one the profile points at, falling back to the free starter.
+  const charItems    = items.filter(i => i.item_type === 'character');
+  const starter      = charItems.find(isFree);
+  const activeCharId = charItems.find(c => c.id === profile.character_type)?.id ?? starter?.id ?? null;
+
+  function priceLabel(item: StoreItem): string {
+    if (isFree(item)) return t('store.free');
+    return isPremium(item) ? `💎${item.premium_cost}` : `💰${item.cost}`;
+  }
+  function canAfford(item: StoreItem): boolean {
+    if (isFree(item)) return true;
+    return isPremium(item) ? (profile!.gems ?? 0) >= item.premium_cost : profile!.points >= item.cost;
+  }
+
+  function renderCard(kind: 'character' | 'weapon', item: StoreItem, color: string) {
+    const ownedEntry = owned.find(o => o.item_id === item.id);
+
+    if (kind === 'character') {
+      const isOwned  = isFree(item) || !!ownedEntry;
+      const isActive = item.id === activeCharId;
+      return (
+        <View key={item.id} style={[cc.card, { borderColor: isOwned ? color : C.border }]}>
+          <HeroSprite size={CAROUSEL} unlocked={isOwned} />
+          <Text style={[cc.cardName, isOwned && { color }]} numberOfLines={1}>{itemName(item.name).toUpperCase()}</Text>
+          {isActive ? (
+            <View style={[cc.stateTag, { borderColor: color }]}><Text style={[cc.stateTagTxt, { color }]}>{t('store.active')}</Text></View>
+          ) : isOwned ? (
+            <Pressable style={({ pressed }) => [cc.cardBtn, { backgroundColor: color }, pressed && cc.cardBtnPressed]} onPress={() => selectCharacter(item)}>
+              <Text style={cc.cardBtnTxt}>{t('store.use')}</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [cc.cardBtn, { backgroundColor: color }, !canAfford(item) && cc.cardBtnDim, pressed && cc.cardBtnPressed]}
+              disabled={!!buying || !canAfford(item)}
+              onPress={() => buy(item)}
+            >
+              <Text style={cc.cardBtnTxt}>{buying === item.id ? '…' : priceLabel(item)}</Text>
+            </Pressable>
+          )}
+        </View>
+      );
+    }
+
+    // Weapon
+    const isOwned    = !!ownedEntry;
+    const isEquipped = ownedEntry?.equipped ?? false;
+    return (
+      <View key={item.id} style={[cc.card, cc.weaponCard, { borderColor: isOwned ? color : C.border }]}>
+        <Text style={cc.weaponEmoji}>{item.emoji}</Text>
+        <Text style={[cc.cardName, isOwned && { color }]} numberOfLines={1}>{itemName(item.name).toUpperCase()}</Text>
+        <Text style={[cc.weaponStat, { color: C.damage }]}>+{item.damage_bonus} ⚔️</Text>
+        {isEquipped ? (
+          <View style={[cc.stateTag, { borderColor: C.hp }]}><Text style={[cc.stateTagTxt, { color: C.hp }]}>{t('store.eq')}</Text></View>
+        ) : isOwned ? (
+          <Pressable style={({ pressed }) => [cc.cardBtn, { backgroundColor: C.hp }, pressed && cc.cardBtnPressed]} onPress={() => equipItem(item)}>
+            <Text style={cc.cardBtnTxt}>{t('store.equip')}</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [cc.cardBtn, { backgroundColor: color }, !canAfford(item) && cc.cardBtnDim, pressed && cc.cardBtnPressed]}
+            disabled={!!buying || !canAfford(item)}
+            onPress={() => buy(item)}
+          >
+            <Text style={cc.cardBtnTxt}>{buying === item.id ? '…' : priceLabel(item)}</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+  }
+
+  function renderCarousel(kind: 'character' | 'weapon') {
+    const list = items.filter(i => i.item_type === kind);
+    return (
+      <ScrollView contentContainerStyle={cc.list} showsVerticalScrollIndicator={false}>
+        {RARITIES.map(r => {
+          const tier = list.filter(i => i.rarity === r.key);
+          if (tier.length === 0) return null;
+          return (
+            <View key={r.key} style={cc.section}>
+              <View style={[cc.tag, { borderColor: r.color }]}>
+                <Text style={[cc.tagText, { color: r.color }]}>{t(`store.${r.key}`)}</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cc.rowScroll}>
+                {tier.map(item => renderCard(kind, item, r.color))}
+              </ScrollView>
+            </View>
+          );
+        })}
+      </ScrollView>
+    );
   }
 
   async function redeem(reward: Reward) {
@@ -219,11 +376,6 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
     setBuying(null);
   }
 
-  if (!profile) return null;
-
-  const typeColor = TYPE_COLOR[filter] ?? C.primary;
-  const isRealLife  = filter === 'real_life';
-  const isCharacter = filter === 'character';
   const filteredItems = items.filter(i => i.item_type === filter);
 
   return (
@@ -240,6 +392,10 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
         </View>
         <View style={s.headerRight}>
           <View style={s.goldBadge}><Text style={s.goldText}>💰 {profile.points}</Text></View>
+          <Pressable style={s.gemBadge} onPress={() => setShowGemShop(true)}>
+            <Text style={s.gemText}>💎 {profile.gems ?? 0}</Text>
+            <Text style={s.gemPlus}>＋</Text>
+          </Pressable>
           {profile.is_leader && isRealLife && (
             <Pressable style={s.addBtn} onPress={() => setShowAddReward(true)}>
               <Text style={s.addBtnText}>＋</Text>
@@ -259,7 +415,10 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
 
       {loading ? <ActivityIndicator color={C.primary} style={{ marginTop: 40 }} /> : isCharacter ? (
         /* ── Character carousel by rarity ── */
-        <CharacterCarousel />
+        renderCarousel('character')
+      ) : isWeapon ? (
+        /* ── Weapon carousel by rarity ── */
+        renderCarousel('weapon')
       ) : isRealLife ? (
         /* ── Real-life rewards grid ── */
         <FlatList
@@ -276,7 +435,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
             </View>
           }
           renderItem={({ item }) => {
-            const canAfford = profile.points >= item.points_cost;
+            const affordable = profile.points >= item.points_cost;
             return (
               <View style={[s.card, { borderTopColor: TYPE_COLOR.real_life, width: CARD_W }]}>
                 <Text style={s.itemEmoji}>🎁</Text>
@@ -284,8 +443,8 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
                 {item.description ? <Text style={s.itemDesc} numberOfLines={2}>{item.description}</Text> : null}
                 <View style={s.cardBottom}>
                   <Pressable
-                    style={({ pressed }) => [s.buyBtn, { backgroundColor: TYPE_COLOR.real_life, borderBottomColor: '#7b2fff' }, !canAfford && s.buyBtnDim, pressed && s.buyBtnPressed]}
-                    disabled={!!buying || !canAfford}
+                    style={({ pressed }) => [s.buyBtn, { backgroundColor: TYPE_COLOR.real_life, borderBottomColor: '#7b2fff' }, !affordable && s.buyBtnDim, pressed && s.buyBtnPressed]}
+                    disabled={!!buying || !affordable}
                     onPress={() => redeem(item)}
                   >
                     <Text style={s.buyBtnText}>{buying === item.id ? '…' : `💰${item.points_cost}`}</Text>
@@ -296,7 +455,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
           }}
         />
       ) : (
-        /* ── Store items grid ── */
+        /* ── Armor / consumable grid ── */
         <FlatList
           data={filteredItems}
           keyExtractor={item => item.id}
@@ -311,7 +470,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
             const ownedEntry = owned.find(o => o.item_id === item.id);
             const isOwned    = !!ownedEntry;
             const isEquipped = ownedEntry?.equipped ?? false;
-            const canAfford  = profile.points >= item.cost;
+            const affordable = canAfford(item);
             const tColor     = TYPE_COLOR[item.item_type] ?? C.primary;
 
             return (
@@ -328,11 +487,11 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
                     <View style={s.tag}><Text style={s.tagText}>{t('store.own')}</Text></View>
                   ) : (
                     <Pressable
-                      style={({ pressed }) => [s.buyBtn, { backgroundColor: tColor, borderBottomColor: tColor + '99' }, !canAfford && s.buyBtnDim, pressed && s.buyBtnPressed]}
-                      disabled={!!buying || (!canAfford && item.cost !== 0)}
+                      style={({ pressed }) => [s.buyBtn, { backgroundColor: tColor, borderBottomColor: tColor + '99' }, !affordable && s.buyBtnDim, pressed && s.buyBtnPressed]}
+                      disabled={!!buying || (!affordable && item.cost !== 0)}
                       onPress={() => buy(item)}
                     >
-                      <Text style={s.buyBtnText}>{buying === item.id ? '…' : item.cost === 0 ? t('store.free') : `💰${item.cost}`}</Text>
+                      <Text style={s.buyBtnText}>{buying === item.id ? '…' : priceLabel(item)}</Text>
                     </Pressable>
                   )}
                 </View>
@@ -342,6 +501,14 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
         />
       )}
 
+      <GemShopModal
+        visible={showGemShop}
+        balance={profile.gems ?? 0}
+        busy={buying === 'gems'}
+        onClose={() => setShowGemShop(false)}
+        onBuy={buyGemPack}
+      />
+
       {profile.is_leader && profile.household_id && (
         <AddRewardModal
           visible={showAddReward}
@@ -350,7 +517,6 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
           onClose={() => setShowAddReward(false)}
           onSaved={() => {
             setShowAddReward(false);
-            // Refresh rewards
             if (profile.household_id) {
               supabase.from('rewards').select('*').eq('household_id', profile.household_id).order('created_at')
                 .then(({ data }) => setRewards(data ?? []));
@@ -373,6 +539,9 @@ const s = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   goldBadge:   { backgroundColor: C.card, borderWidth: 2, borderColor: C.gold, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
   goldText:    { fontFamily: F.pixel, fontSize: 9, color: C.gold },
+  gemBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.card, borderWidth: 2, borderColor: '#ff7b00', borderRadius: 12, paddingLeft: 12, paddingRight: 8, paddingVertical: 6 },
+  gemText:     { fontFamily: F.pixel, fontSize: 9, color: '#ff7b00' },
+  gemPlus:     { fontFamily: F.pixel, fontSize: 11, color: '#ff7b00', marginTop: -2 },
   addBtn:      { width: 36, height: 36, backgroundColor: '#c77dff', borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: '#7b2fff' },
   addBtnText:  { fontFamily: F.pixel, fontSize: 18, color: C.bg, lineHeight: 22 },
 
@@ -427,15 +596,47 @@ const rm = StyleSheet.create({
   saveTxt:       { fontFamily: F.pixel, fontSize: 9, color: C.bg, letterSpacing: 1 },
 });
 
+const gm = StyleSheet.create({
+  balanceRow:  { alignItems: 'center', paddingVertical: 18 },
+  balanceTxt:  { fontFamily: F.pixel, fontSize: 18, color: '#ff7b00', letterSpacing: 1 },
+  list:        { paddingHorizontal: 20, paddingBottom: 32, gap: 12 },
+  pack: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: C.card, borderWidth: 2, borderColor: C.border,
+    borderBottomWidth: 4, borderBottomColor: C.border, borderRadius: 16, padding: 16,
+  },
+  packBest:    { borderColor: '#ff7b00', borderBottomColor: '#b35600' },
+  bestTag:     { position: 'absolute', top: -9, right: 14, backgroundColor: '#ff7b00', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  bestTagTxt:  { fontFamily: F.pixel, fontSize: 6, color: C.bg, letterSpacing: 0.5 },
+  packGems:    { fontFamily: F.pixel, fontSize: 14, color: '#ff7b00' },
+  packLabel:   { flex: 1, fontFamily: F.pixel, fontSize: 7, color: C.textMuted, letterSpacing: 1 },
+  buyBtn:        { backgroundColor: C.hp, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 3, borderBottomColor: C.hpDark },
+  buyBtnPressed: { borderBottomWidth: 0, marginTop: 3 },
+  buyTxt:        { fontFamily: F.pixel, fontSize: 9, color: C.bg },
+});
+
 const cc = StyleSheet.create({
-  list:     { padding: 14, gap: 18, paddingBottom: 32 },
-  section:  { gap: 10 },
-  tag:      { alignSelf: 'flex-start', borderWidth: 2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
-  tagText:  { fontFamily: F.pixel, fontSize: 8, letterSpacing: 1 },
-  rowScroll:{ gap: 12, paddingRight: 14 },
+  list:      { padding: 14, gap: 18, paddingBottom: 32 },
+  section:   { gap: 10 },
+  tag:       { alignSelf: 'flex-start', borderWidth: 2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  tagText:   { fontFamily: F.pixel, fontSize: 8, letterSpacing: 1 },
+  rowScroll: { gap: 12, paddingRight: 14 },
   card: {
+    width: CAROUSEL + 24,
     backgroundColor: C.card, borderWidth: 2, borderRadius: 14,
     padding: 8, alignItems: 'center', gap: 6,
   },
-  cardName: { fontFamily: F.pixel, fontSize: 7, color: C.textMuted, letterSpacing: 1 },
+  cardName:  { fontFamily: F.pixel, fontSize: 7, color: C.textMuted, letterSpacing: 0.5, textAlign: 'center' },
+
+  weaponCard:  { justifyContent: 'space-between' },
+  weaponEmoji: { fontSize: Math.round(CAROUSEL * 0.5), height: CAROUSEL, lineHeight: CAROUSEL, textAlign: 'center' },
+  weaponStat:  { fontFamily: F.pixel, fontSize: 8 },
+
+  cardBtn:        { width: '100%', borderRadius: 8, paddingVertical: 6, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: '#0006' },
+  cardBtnDim:     { opacity: 0.4 },
+  cardBtnPressed: { borderBottomWidth: 0, marginTop: 3 },
+  cardBtnTxt:     { fontFamily: F.pixel, fontSize: 8, color: C.bg },
+
+  stateTag:    { width: '100%', borderWidth: 2, borderRadius: 8, paddingVertical: 4, alignItems: 'center' },
+  stateTagTxt: { fontFamily: F.pixel, fontSize: 7, letterSpacing: 0.5 },
 });
