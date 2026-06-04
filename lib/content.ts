@@ -21,7 +21,8 @@ const ITEM_PT: Record<string, [string, string]> = {
   'Bread':           ['Pão',                  'Uma dentada rápida. Cura 3 HP.'],
   'Health Potion':   ['Poção de Vida',        'Restaura 10 HP.'],
   'Elixir':          ['Elixir',               'Restaura todo o HP.'],
-  // Weapons — common
+  // Weapons — starter + common
+  'Training Sword':        ['Espada de Treino',     ''],
   'Wooden Sword':          ['Espada de Madeira',    ''],
   'Rusty Dagger':          ['Adaga Enferrujada',    ''],
   "Hunter's Sling":        ['Funda de Caçador',     ''],

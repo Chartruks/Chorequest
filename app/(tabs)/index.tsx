@@ -218,7 +218,19 @@ export default function GameScreen() {
         ? supabase.from('households').select('invite_code').eq('id', hid).single()
         : Promise.resolve({ data: null }),
     ]);
-    setPlayerItems(pi ?? []);
+    // Ensure every hero owns a weapon: grant the free starter (equipped) if they have none.
+    // Covers new heroes and post-reset, so base attack is 2 from the start.
+    let items = pi ?? [];
+    if (!items.some((it: any) => it.store_items?.item_type === 'weapon')) {
+      const { data: starter } = await supabase.from('store_items')
+        .select('id').eq('item_type', 'weapon').eq('cost', 0).order('sort_order').limit(1).maybeSingle();
+      if (starter) {
+        await supabase.from('player_items').insert({ profile_id: profile.id, item_id: starter.id, quantity: 1, equipped: true } as any);
+        const { data: pi2 } = await supabase.from('player_items').select('*, store_items(*)').eq('profile_id', profile.id);
+        items = pi2 ?? items;
+      }
+    }
+    setPlayerItems(items);
     setFamily(fam ?? []);
     setPendingCount(ch?.length ?? 0);
     setInviteCode(hh?.data ? ((hh.data as any).invite_code ?? '') : '');
