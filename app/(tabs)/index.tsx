@@ -16,6 +16,7 @@ import {
   calcMaxHp, calcMonsterAttack, getEquippedBonus,
   nextAttackCountdown, xpForNextLevel,
 } from '../../lib/towerEngine';
+import { SKILLS, getSkills, spentPoints } from '../../lib/skills';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import { C, F } from '../../constants/theme';
@@ -189,7 +190,7 @@ export default function GameScreen() {
 
     // monster attack tick — damage sticks; if it hits 0 the hero is defeated
     // (revive by doing 2 chores), no auto-heal.
-    const attack = calcMonsterAttack(fp, fd);
+    const attack = calcMonsterAttack(fp, fd, calcMaxHp(fp, playerItems));
     if (attack.ticks > 0) {
       playSfx('enemyAttack');
       const justDied = fp.player_hp > 0 && attack.newHp <= 0;
@@ -444,6 +445,21 @@ export default function GameScreen() {
     { item: equippedArmor,  ph: '🛡️' },
   ];
   const dead    = profile.player_hp <= 0;
+  const storeLocked  = profile.level < 5;
+  const skillsLocked = profile.level < 10;
+  const profSkills   = getSkills(profile);
+  const availPts     = (profile.skill_points ?? 0) - spentPoints(profSkills);
+
+  async function spendSkill(id: string) {
+    if (!profile) return;
+    const def = SKILLS.find(d => d.id === id);
+    if (!def) return;
+    const cur = profSkills[id] ?? 0;
+    if (cur >= def.max || availPts <= 0) return;
+    const next = { ...profSkills, [id]: cur + 1 };
+    await supabase.from('profiles').update({ skills: next } as any).eq('id', profile.id);
+    await refreshProfile();
+  }
 
   return (
     <View style={s.container}>
@@ -545,6 +561,7 @@ export default function GameScreen() {
                   <View style={s.badgeRow}>
                     <Text style={s.lvText}>LV.{profile.level}</Text>
                     <Text style={s.goldText}>{profile.points} 💰</Text>
+                    <Text style={s.tokenText}>{profile.tokens ?? 0} 🎟️</Text>
                   </View>
                 </View>
 
@@ -578,17 +595,26 @@ export default function GameScreen() {
 
                 {/* Group 4: action tiles (2×2) */}
                 <View style={s.actionGrid}>
-                  <Pressable style={({ pressed }) => [s.actionTile, s.storeTile, pressed && s.actionTilePressed]} onPress={() => { playSfx('menu'); setShowStore(true); }}>
-                    <Text style={s.actionTileEmoji}>🛒</Text>
-                    <Text style={[s.actionTileLabel, { color: '#cce8ff' }]}>{t('game.store')}</Text>
+                  <Pressable
+                    style={({ pressed }) => [s.actionTile, s.storeTile, storeLocked && s.actionTileLocked, pressed && !storeLocked && s.actionTilePressed]}
+                    onPress={() => { if (storeLocked) { Alert.alert(t('game.locked'), t('game.unlockAt', { lv: 5 })); return; } playSfx('menu'); setShowStore(true); }}
+                  >
+                    <Text style={s.actionTileEmoji}>{storeLocked ? '🔒' : '🛒'}</Text>
+                    <Text style={[s.actionTileLabel, { color: '#cce8ff' }]}>{storeLocked ? t('game.unlockAtShort', { lv: 5 }) : t('game.store')}</Text>
                   </Pressable>
                   <Pressable style={({ pressed }) => [s.actionTile, s.achieveTile, pressed && s.actionTilePressed]} onPress={() => { playSfx('menu'); setShowAchievements(true); }}>
                     <Text style={s.actionTileEmoji}>🏆</Text>
                     <Text style={[s.actionTileLabel, { color: '#fffacc' }]}>{t('game.feats')}</Text>
                   </Pressable>
-                  <Pressable style={({ pressed }) => [s.actionTile, s.skillsTile, pressed && s.actionTilePressed]} onPress={() => { playSfx('menu'); setShowSkills(true); }}>
-                    <Text style={s.actionTileEmoji}>✨</Text>
-                    <Text style={[s.actionTileLabel, { color: '#e8d5ff' }]}>{t('game.skills')}</Text>
+                  <Pressable
+                    style={({ pressed }) => [s.actionTile, s.skillsTile, skillsLocked && s.actionTileLocked, pressed && !skillsLocked && s.actionTilePressed]}
+                    onPress={() => { if (skillsLocked) { Alert.alert(t('game.locked'), t('game.unlockAt', { lv: 10 })); return; } playSfx('menu'); setShowSkills(true); }}
+                  >
+                    <Text style={s.actionTileEmoji}>{skillsLocked ? '🔒' : '✨'}</Text>
+                    <Text style={[s.actionTileLabel, { color: '#e8d5ff' }]}>{skillsLocked ? t('game.unlockAtShort', { lv: 10 }) : t('game.skills')}</Text>
+                    {!skillsLocked && availPts > 0 && (
+                      <View style={s.skillBadge}><Text style={s.skillBadgeTxt}>{availPts}</Text></View>
+                    )}
                   </Pressable>
                   <Pressable style={({ pressed }) => [s.actionTile, s.guildTile, pressed && s.actionTilePressed]} onPress={() => { playSfx('menu'); setShowGuild(true); }}>
                     <Text style={s.actionTileEmoji}>🏰</Text>
@@ -815,19 +841,45 @@ export default function GameScreen() {
         )}
       </Modal>
 
-      {/* Skills (skill tree) — placeholder */}
+      {/* Skills (skill tree) */}
       <Modal visible={showSkills} animationType="slide" onRequestClose={() => setShowSkills(false)}>
         <SafeAreaView style={s.guildModal}>
           <View style={s.guildHeader}>
             <Pressable onPress={() => setShowSkills(false)} style={s.guildBack}>
               <Text style={s.guildBackTxt}>←</Text>
             </Pressable>
-            <Text style={[s.guildTitle, { color: '#b89bff' }]}>{t('skills.title')}</Text>
+            <Text style={[s.guildTitle, { color: '#b89bff', flex: 1 }]}>{t('skills.title')}</Text>
+            <View style={s.skillPtsBadge}><Text style={s.skillPtsTxt}>{availPts} ✨</Text></View>
           </View>
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 40 }}>✨</Text>
-            <Text style={{ fontFamily: F.pixel, fontSize: 8, color: C.textMuted, letterSpacing: 1 }}>{t('skills.soon')}</Text>
-          </View>
+          <Text style={s.skillHint}>{availPts > 0 ? t('skills.spendHint') : t('skills.noneHint')}</Text>
+          <ScrollView contentContainerStyle={s.skillList}>
+            {SKILLS.map(def => {
+              const cur = profSkills[def.id] ?? 0;
+              const maxed = cur >= def.max;
+              const canBuy = !maxed && availPts > 0;
+              return (
+                <View key={def.id} style={[s.skillRow, { borderColor: def.color }]}>
+                  <Text style={s.skillIcon}>{def.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.skillName, { color: def.color }]}>{t(`skills.${def.id}.name`)}</Text>
+                    <Text style={s.skillDesc}>{t(`skills.${def.id}.desc`)}</Text>
+                    <View style={s.pipRow}>
+                      {Array.from({ length: def.max }).map((_, i) => (
+                        <View key={i} style={[s.pip, { borderColor: def.color, backgroundColor: i < cur ? def.color : 'transparent' }]} />
+                      ))}
+                    </View>
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [s.skillBuy, { backgroundColor: canBuy ? def.color : C.border }, pressed && canBuy && { opacity: 0.8 }]}
+                    disabled={!canBuy}
+                    onPress={() => spendSkill(def.id)}
+                  >
+                    <Text style={s.skillBuyTxt}>{maxed ? t('skills.max') : '＋'}</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </ScrollView>
         </SafeAreaView>
       </Modal>
 
@@ -964,12 +1016,29 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 3,
   },
   actionTilePressed: { borderBottomWidth: 2, marginTop: 2 },
+  actionTileLocked:  { opacity: 0.5 },
   actionTileEmoji:   { fontSize: 20 },
   actionTileLabel:   { fontFamily: F.pixel, fontSize: 7, letterSpacing: 1 },
+  skillBadge:        { position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: C.damage, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.bg },
+  skillBadgeTxt:     { fontFamily: F.pixel, fontSize: 8, color: '#fff' },
   storeTile:   { backgroundColor: '#3d9be9', borderColor: '#1c5f99', borderBottomColor: '#1c5f99' },
   achieveTile: { backgroundColor: '#2d9e5f', borderColor: '#1a5c38', borderBottomColor: '#1a5c38' },
   skillsTile:  { backgroundColor: '#9b6fe8', borderColor: '#5f3da0', borderBottomColor: '#5f3da0' },
   guildTile:   { backgroundColor: '#e8b432', borderColor: '#9b6f0a', borderBottomColor: '#9b6f0a' },
+
+  // ── Skills modal ──
+  skillPtsBadge: { backgroundColor: C.card, borderWidth: 2, borderColor: '#b89bff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  skillPtsTxt:   { fontFamily: F.pixel, fontSize: 9, color: '#b89bff' },
+  skillHint:     { fontFamily: F.body, fontSize: 15, color: C.textMuted, paddingHorizontal: 16, paddingBottom: 8 },
+  skillList:     { padding: 14, gap: 10, paddingBottom: 32 },
+  skillRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderWidth: 2, borderRadius: 14, padding: 12 },
+  skillIcon:     { fontSize: 26 },
+  skillName:     { fontFamily: F.pixel, fontSize: 9, letterSpacing: 0.5, marginBottom: 4 },
+  skillDesc:     { fontFamily: F.body, fontSize: 15, color: C.textMuted, lineHeight: 18, marginBottom: 6 },
+  pipRow:        { flexDirection: 'row', gap: 4 },
+  pip:          { width: 10, height: 10, borderRadius: 3, borderWidth: 2 },
+  skillBuy:      { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  skillBuyTxt:   { fontFamily: F.pixel, fontSize: 10, color: C.bg },
 
   // ── Guild modal ──
   guildModal:   { flex: 1, backgroundColor: C.bg },
@@ -1104,6 +1173,7 @@ const s = StyleSheet.create({
   barsGroup:  { gap: 8 },
   lvText:   { fontFamily: F.pixel, fontSize: Math.round(SH * 0.013), color: C.textMuted },
   goldText: { fontFamily: F.pixel, fontSize: Math.round(SH * 0.013), color: C.gold },
+  tokenText:{ fontFamily: F.pixel, fontSize: Math.round(SH * 0.013), color: '#c77dff' },
 
   stat:           { fontFamily: F.pixel, fontSize: 12, lineHeight: 22 },
 

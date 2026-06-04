@@ -23,6 +23,7 @@ export type Database = {
           last_monster_attack: string; level: number; monster_hp: number
           player_hp: number; player_max_hp: number; points: number
           revive_progress: number; push_token: string | null; gems: number
+          tokens: number; skill_points: number; skills: Json
           monsters_defeated: number; gold_spent: number; deaths: number
           revives: number; chores_done: number
           role: string | null; tower_floor: number; username: string | null; xp: number
@@ -33,6 +34,7 @@ export type Database = {
           last_monster_attack?: string; level?: number; monster_hp?: number
           player_hp?: number; player_max_hp?: number; points?: number
           revive_progress?: number; push_token?: string | null; gems?: number
+          tokens?: number; skill_points?: number; skills?: Json
           monsters_defeated?: number; gold_spent?: number; deaths?: number
           revives?: number; chores_done?: number
           role?: string | null; tower_floor?: number; username?: string | null; xp?: number
@@ -43,6 +45,7 @@ export type Database = {
           last_monster_attack?: string; level?: number; monster_hp?: number
           player_hp?: number; player_max_hp?: number; points?: number
           revive_progress?: number; push_token?: string | null; gems?: number
+          tokens?: number; skill_points?: number; skills?: Json
           monsters_defeated?: number; gold_spent?: number; deaths?: number
           revives?: number; chores_done?: number
           role?: string | null; tower_floor?: number; username?: string | null; xp?: number

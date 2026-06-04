@@ -94,7 +94,7 @@ function AddRewardModal({ visible, householdId, createdBy, onClose, onSaved }: {
           <TextInput style={[rm.input, { height: 80 }]} placeholder={t('store.rewardDescPh')}
             placeholderTextColor={C.textDim} value={desc} onChangeText={setDesc} multiline />
 
-          <Text style={rm.lbl}>{t('store.goldCost')}</Text>
+          <Text style={rm.lbl}>{t('store.tokenCost')}</Text>
           <TextInput style={rm.input} value={cost} onChangeText={setCost}
             keyboardType="number-pad" />
 
@@ -365,12 +365,13 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
 
   async function redeem(reward: Reward) {
     if (!profile) return;
-    if (profile.points < reward.points_cost) {
-      Alert.alert(t('store.notEnough'), t('store.notEnoughBody', { cost: reward.points_cost, have: profile.points }));
+    const tokens = profile.tokens ?? 0;
+    if (tokens < reward.points_cost) {
+      Alert.alert(t('store.notEnoughTokens'), t('store.notEnoughTokensBody', { cost: reward.points_cost, have: tokens }));
       return;
     }
     setBuying(reward.id);
-    await supabase.from('profiles').update({ points: profile.points - reward.points_cost, gold_spent: (profile.gold_spent ?? 0) + reward.points_cost } as any).eq('id', profile.id);
+    await supabase.from('profiles').update({ tokens: tokens - reward.points_cost } as any).eq('id', profile.id);
     await refreshProfile();
     Alert.alert(t('store.redeemed'), t('store.redeemedBody', { title: reward.title }));
     setBuying(null);
@@ -391,7 +392,9 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
           <Text style={s.headerTitle}>{t('store.title')}</Text>
         </View>
         <View style={s.headerRight}>
-          <View style={s.goldBadge}><Text style={s.goldText}>💰 {profile.points}</Text></View>
+          {isRealLife
+            ? <View style={s.tokenBadge}><Text style={s.tokenText}>🎟️ {profile.tokens ?? 0}</Text></View>
+            : <View style={s.goldBadge}><Text style={s.goldText}>💰 {profile.points}</Text></View>}
           <Pressable style={s.gemBadge} onPress={() => setShowGemShop(true)}>
             <Text style={s.gemText}>💎 {profile.gems ?? 0}</Text>
             <Text style={s.gemPlus}>＋</Text>
@@ -435,7 +438,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
             </View>
           }
           renderItem={({ item }) => {
-            const affordable = profile.points >= item.points_cost;
+            const affordable = (profile.tokens ?? 0) >= item.points_cost;
             return (
               <View style={[s.card, { borderTopColor: TYPE_COLOR.real_life, width: CARD_W }]}>
                 <Text style={s.itemEmoji}>🎁</Text>
@@ -447,7 +450,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
                     disabled={!!buying || !affordable}
                     onPress={() => redeem(item)}
                   >
-                    <Text style={s.buyBtnText}>{buying === item.id ? '…' : `💰${item.points_cost}`}</Text>
+                    <Text style={s.buyBtnText}>{buying === item.id ? '…' : `🎟️${item.points_cost}`}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -539,6 +542,8 @@ const s = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   goldBadge:   { backgroundColor: C.card, borderWidth: 2, borderColor: C.gold, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
   goldText:    { fontFamily: F.pixel, fontSize: 9, color: C.gold },
+  tokenBadge:  { backgroundColor: C.card, borderWidth: 2, borderColor: '#c77dff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  tokenText:   { fontFamily: F.pixel, fontSize: 9, color: '#c77dff' },
   gemBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.card, borderWidth: 2, borderColor: '#ff7b00', borderRadius: 12, paddingLeft: 12, paddingRight: 8, paddingVertical: 6 },
   gemText:     { fontFamily: F.pixel, fontSize: 9, color: '#ff7b00' },
   gemPlus:     { fontFamily: F.pixel, fontSize: 11, color: '#ff7b00', marginTop: -2 },

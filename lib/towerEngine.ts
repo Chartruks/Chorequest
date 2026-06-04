@@ -1,26 +1,48 @@
 import { Database } from '../types/database';
+import { getSkills, damageMult, hpMult, regenPerDay } from './skills';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type TowerFloor = Database['public']['Tables']['tower_floors']['Row'];
 type StoreItem = Database['public']['Tables']['store_items']['Row'];
 type PlayerItem = Database['public']['Tables']['player_items']['Row'] & { store_items: StoreItem };
 
-export const MAX_FLOOR = 10;
-export const MAX_LEVEL = 10;
+export const MAX_FLOOR = 100;
+export const MAX_LEVEL = 30;
 
-// Per-level tuning. reachXp = cumulative XP required to *reach* that level.
-// Per-level needs are 1,2,3,5,7,9,12,15,19 → clearing all 10 floors hits L10.
+// Per-level tuning, generated from the progression model (see /tmp/gen.js):
+//   level(f)=round(1+29·(f/100)^0.85), hp(L)=round(25+8·L^1.4), xp = 1 per floor.
+// reachXp[L] = cumulative XP (= floors cleared) required to reach that level.
 const LEVELS: { reachXp: number; hp: number }[] = [
-  { reachXp: 0,  hp: 5  }, // L1
-  { reachXp: 1,  hp: 7  }, // L2
-  { reachXp: 3,  hp: 10 }, // L3
-  { reachXp: 6,  hp: 13 }, // L4
-  { reachXp: 11, hp: 17 }, // L5
-  { reachXp: 18, hp: 21 }, // L6
-  { reachXp: 27, hp: 26 }, // L7
-  { reachXp: 39, hp: 31 }, // L8
-  { reachXp: 54, hp: 37 }, // L9
-  { reachXp: 73, hp: 44 }, // L10
+  { reachXp: 0,  hp: 33  }, // L1
+  { reachXp: 1,  hp: 46  },
+  { reachXp: 4,  hp: 62  },
+  { reachXp: 6,  hp: 81  },
+  { reachXp: 9,  hp: 101 }, // L5  (store unlocks)
+  { reachXp: 12, hp: 123 },
+  { reachXp: 15, hp: 147 },
+  { reachXp: 18, hp: 172 },
+  { reachXp: 21, hp: 198 },
+  { reachXp: 24, hp: 226 }, // L10 (skills unlock)
+  { reachXp: 27, hp: 255 },
+  { reachXp: 31, hp: 284 },
+  { reachXp: 34, hp: 315 },
+  { reachXp: 38, hp: 347 },
+  { reachXp: 41, hp: 380 },
+  { reachXp: 45, hp: 413 },
+  { reachXp: 48, hp: 447 },
+  { reachXp: 52, hp: 483 },
+  { reachXp: 56, hp: 519 },
+  { reachXp: 59, hp: 555 },
+  { reachXp: 63, hp: 593 },
+  { reachXp: 67, hp: 631 },
+  { reachXp: 71, hp: 670 },
+  { reachXp: 75, hp: 710 },
+  { reachXp: 79, hp: 750 },
+  { reachXp: 83, hp: 791 },
+  { reachXp: 86, hp: 832 },
+  { reachXp: 90, hp: 874 },
+  { reachXp: 94, hp: 917 },
+  { reachXp: 98, hp: 961 }, // L30
 ];
 
 export function calcLevel(xp: number): number {
@@ -55,14 +77,17 @@ export function getEquippedBonus(playerItems: PlayerItem[]): { damage: number; h
   );
 }
 
-// Damage comes from the chore + equipped gear (levels grant HP, not damage),
-// so weapons stay meaningful.
-export function calcTotalDamage(baseDamage: number, _profile: Profile, playerItems: PlayerItem[]): number {
-  return baseDamage + getEquippedBonus(playerItems).damage;
+// Damage = (chore base + equipped weapon) × Power-skill multiplier. Levels grant HP, not
+// damage, so weapons (and the Power skill) stay the levers that out-pace monster HP.
+export function calcTotalDamage(baseDamage: number, profile: Profile, playerItems: PlayerItem[]): number {
+  const raw = baseDamage + getEquippedBonus(playerItems).damage;
+  return Math.round(raw * damageMult(getSkills(profile)));
 }
 
+// Max HP = level pool × Vigor-skill multiplier + flat armor bonus.
 export function calcMaxHp(profile: Profile, playerItems: PlayerItem[]): number {
-  return maxHpForLevel(profile.level) + getEquippedBonus(playerItems).hp;
+  const base = Math.round(maxHpForLevel(profile.level) * hpMult(getSkills(profile)));
+  return base + getEquippedBonus(playerItems).hp;
 }
 
 export interface MonsterAttackResult {
@@ -72,13 +97,21 @@ export interface MonsterAttackResult {
   newLastAttack: Date;
 }
 
-export function calcMonsterAttack(profile: Profile, floor: TowerFloor): MonsterAttackResult {
+// Resolves elapsed monster attacks (and any passive Regen) since the last tick.
+// Pass maxHp so Regen healing (and the HP cap) can be applied over elapsed time.
+export function calcMonsterAttack(profile: Profile, floor: TowerFloor, maxHp?: number): MonsterAttackResult {
   const now = Date.now();
   const last = new Date(profile.last_monster_attack).getTime();
   const intervalMs = floor.attack_interval_hours * 3_600_000;
   const ticks = Math.floor((now - last) / intervalMs);
   const totalDamage = ticks * floor.monster_attack;
-  const newHp = Math.max(0, profile.player_hp - totalDamage);
+  const elapsedDays = (ticks * floor.attack_interval_hours) / 24;
+  const cap = maxHp ?? Infinity;
+  const afterDmg = Math.max(0, profile.player_hp - totalDamage);
+  // Regen heals over elapsed time, but only up to the cap — and never clips current HP
+  // downward (so a stale/low maxHp estimate can't hurt the player).
+  const regenHeal = Math.round(regenPerDay(getSkills(profile)) * (Number.isFinite(cap) ? cap : 0) * elapsedDays);
+  const newHp = afterDmg + Math.min(regenHeal, Math.max(0, cap - afterDmg));
   const newLastAttack = new Date(last + ticks * intervalMs);
   return { ticks, totalDamage, newHp, newLastAttack };
 }

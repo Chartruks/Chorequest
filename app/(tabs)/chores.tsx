@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { calcLevel, calcTotalDamage, calcMaxHp, maxHpForLevel, getEquippedBonus, MAX_FLOOR } from '../../lib/towerEngine';
+import { getSkills, goldMult, hasCritical, hasTreasure, reviveChoresNeeded, earnedSkillPoints, CRIT_CHANCE, CRIT_MULT, TREASURE_BOSS_BONUS } from '../../lib/skills';
 import { playAttackSfx } from '../../lib/sfx';
 import { t } from '../../lib/i18n';
 import { choreTitle } from '../../lib/content';
@@ -290,21 +291,27 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
     if (!profile) return;
     setBusy(true);
 
+    const skills = getSkills(profile);
     const dead = profile.player_hp <= 0;
     let defeated = false;
     let levelInfo: { from: number; to: number; hpGain: number } | null = null;
+    let dealt = 0;   // damage applied this attack (for the log / family ping)
 
     if (dead) {
-      // Revive: 2 chores to come back to life
+      // Revive: needs 2 chores (1 with the Second Wind skill).
+      const need = reviveChoresNeeded(skills);
       const prog = (profile.revive_progress ?? 0) + 1;
-      const updates: Record<string, any> = prog >= 2
+      const updates: Record<string, any> = prog >= need
         ? { revive_progress: 0, player_hp: calcMaxHp(profile, playerItems), revives: (profile.revives ?? 0) + 1 }
         : { revive_progress: prog };
       updates.chores_done = (profile.chores_done ?? 0) + 1;
       await supabase.from('profiles').update(updates as any).eq('id', profile.id);
     } else {
       playAttackSfx(profile.character_type);   // per-character attack sound
-      const damage       = calcTotalDamage(chore.damage_reward, profile, playerItems);
+      let damage = calcTotalDamage(chore.damage_reward, profile, playerItems);
+      // Critical Strike skill: chance to double a hit.
+      if (hasCritical(skills) && Math.random() < CRIT_CHANCE) damage *= CRIT_MULT;
+      dealt = damage;
       const newMonsterHp = Math.max(0, profile.monster_hp - damage);
       defeated = newMonsterHp === 0;
       const updates: Record<string, any> = { monster_hp: newMonsterHp };
@@ -312,19 +319,27 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
       if (defeated) updates.monsters_defeated = (profile.monsters_defeated ?? 0) + 1;
 
       if (defeated) {
-        // Award the defeated floor's xp + gold, then advance (floor 10 repeats).
+        const isBoss = profile.tower_floor % 10 === 0;
+        // Award the defeated floor's xp + gold + 1 real-life token, then advance.
         const { data: cur } = await supabase
           .from('tower_floors').select('xp_reward, money_reward')
           .eq('floor', profile.tower_floor).single();
-        const newXp    = profile.xp + (cur?.xp_reward ?? 0);
+        const newXp    = profile.xp + (cur?.xp_reward ?? 1);
         const newLevel = calcLevel(newXp);
+        // Gold: Fortune skill multiplier, plus a Treasure bonus on boss floors.
+        let gold = (cur?.money_reward ?? 0) * goldMult(skills);
+        if (isBoss && hasTreasure(skills)) gold *= 1 + TREASURE_BOSS_BONUS;
         updates.xp     = newXp;
-        updates.points = profile.points + (cur?.money_reward ?? 0);
+        updates.points = profile.points + Math.round(gold);
+        updates.tokens = (profile.tokens ?? 0) + 1;   // 1 real-life token per kill
         if (newLevel > profile.level) {
           levelInfo             = { from: profile.level, to: newLevel, hpGain: maxHpForLevel(newLevel) - maxHpForLevel(profile.level) };
           updates.level         = newLevel;
-          updates.player_max_hp = maxHpForLevel(newLevel);
-          updates.player_hp     = maxHpForLevel(newLevel); // heal to full on level up
+          updates.player_max_hp = calcMaxHp({ ...profile, level: newLevel }, playerItems);
+          updates.player_hp     = updates.player_max_hp; // heal to full on level up
+          // Skill points: one per level gained beyond level 10.
+          const gained = earnedSkillPoints(newLevel) - earnedSkillPoints(profile.level);
+          if (gained > 0) updates.skill_points = (profile.skill_points ?? 0) + gained;
         }
         const nextFloor = Math.min(profile.tower_floor + 1, MAX_FLOOR);
         const { data: nf } = await supabase
@@ -342,9 +357,9 @@ export default function ChoresScreen({ onClose, sheetMode, onDefeat }: { onClose
       household_id: profile.household_id ?? null,
       profile_id:   profile.id,
       chore_title:  chore.title,
-      damage:       dead ? 0 : calcTotalDamage(chore.damage_reward, profile, playerItems),
+      damage:       dealt,
     } as any);
-    if (profile.household_id) await notifyFamily(chore, dead ? 0 : calcTotalDamage(chore.damage_reward, profile, playerItems));
+    if (profile.household_id) await notifyFamily(chore, dealt);
 
     await refreshProfile();
     setBusy(false);

@@ -3,21 +3,11 @@
 // display time. Chore titles are authored per family → localized when picked.
 import { LANG } from './i18n';
 
-// ── Monsters (by floor). PT only; EN falls back to the DB name. ──
-const MONSTER_PT: Record<number, string> = {
-  1: 'Gloomling',
-  2: 'Gravewhisker',
-  3: 'Duskwing',
-  4: 'Snare, o Batedor',
-  5: 'Warg Cinzento',
-  6: 'Cavaleiro Oco',
-  7: 'Gorehide',
-  8: 'Stonemaw',
-  9: 'Espectro Chorão',
-  10: 'Ignar, o Guardião',
-};
-export function monsterName(floor: number, fallback: string): string {
-  return LANG === 'pt' ? (MONSTER_PT[floor] ?? fallback) : fallback;
+// ── Monsters. The 100 tower monsters use language-neutral fantasy names, so we
+//    display the DB name as-is in both languages. (Kept as a function so callers
+//    don't change if we localize specific named generals later.)
+export function monsterName(_floor: number, fallback: string): string {
+  return fallback;
 }
 
 // ── Store items (keyed by English name). PT [name, description]. ──
@@ -32,30 +22,70 @@ const ITEM_PT: Record<string, [string, string]> = {
   'Health Potion':   ['Poção de Vida',        'Restaura 10 HP.'],
   'Elixir':          ['Elixir',               'Restaura todo o HP.'],
   // Weapons — common
-  'Wooden Sword':          ['Espada de Madeira',    'Uma lâmina inicial robusta.'],
-  'Rusty Dagger':          ['Adaga Enferrujada',    'Pequena mas afiada.'],
-  "Hunter's Sling":        ['Funda de Caçador',     'Atira pedras à distância.'],
-  'Oak Club':              ['Clava de Carvalho',    'Madeira pesada e sólida.'],
+  'Wooden Sword':          ['Espada de Madeira',    ''],
+  'Rusty Dagger':          ['Adaga Enferrujada',    ''],
+  "Hunter's Sling":        ['Funda de Caçador',     ''],
+  'Oak Club':              ['Clava de Carvalho',    ''],
+  'Chipped Hatchet':       ['Machadinha Lascada',   ''],
+  'Iron Shiv':             ['Estilete de Ferro',    ''],
+  'Worn Spear':            ['Lança Gasta',          ''],
+  'Field Knife':           ['Faca de Campo',        ''],
+  'Hardwood Staff':        ['Bordão de Madeira Rija',''],
+  'Bronze Cleaver':        ['Cutelo de Bronze',     ''],
+  'Sharpened Sickle':      ['Foice Afiada',         ''],
+  'Twin Daggers':          ['Adagas Gémeas',        ''],
   // Weapons — uncommon
-  'Stone Axe':             ['Machado de Pedra',     'Pesado e fiável.'],
-  'Short Bow':             ['Arco Curto',           'Rápido e preciso.'],
-  'Bronze Spear':          ['Lança de Bronze',      'Alcance e perfuração.'],
-  'Spiked Mace':           ['Maça com Espigões',    'Esmaga qualquer armadura.'],
+  'Stone Axe':             ['Machado de Pedra',     ''],
+  'Short Bow':             ['Arco Curto',           ''],
+  'Bronze Spear':          ['Lança de Bronze',      ''],
+  'Spiked Mace':           ['Maça com Espigões',    ''],
+  'Brass Knuckles':        ['Soqueira de Latão',    ''],
+  'Curved Saber':          ['Sabre Curvo',          ''],
+  'Bearded Axe':           ['Machado Barbado',      ''],
+  'War Pick':              ['Picareta de Guerra',   ''],
+  'Recurve Bow':           ['Arco Recurvo',         ''],
+  'Iron Trident':          ['Tridente de Ferro',    ''],
+  'Battle Staff':          ['Bordão de Batalha',    ''],
+  'Serrated Blade':        ['Lâmina Serrilhada',    ''],
   // Weapons — rare
-  'Iron Sword':            ['Espada de Ferro',      'Um fio de aço forjado.'],
-  'Battle Axe':            ['Machado de Batalha',   'Feito para a guerra.'],
-  'Crossbow':              ['Besta',                'Virotes que furam tudo.'],
-  'War Halberd':           ['Alabarda de Guerra',   'Lâmina e ponta numa só arma.'],
+  'Iron Sword':            ['Espada de Ferro',      ''],
+  'Battle Axe':            ['Machado de Batalha',   ''],
+  'Crossbow':              ['Besta',                ''],
+  'War Halberd':           ['Alabarda de Guerra',   ''],
+  'Flanged Mace':          ['Maça Flangeada',       ''],
+  'Longsword':             ['Espada Longa',         ''],
+  'Glaive':                ['Glaive',               ''],
+  'Heavy Lance':           ['Lança Pesada',         ''],
+  'Composite Bow':         ['Arco Composto',        ''],
+  'Morning Star':          ['Estrela-da-Manhã',     ''],
+  'War Scythe':            ['Foice de Guerra',      ''],
+  'Dueling Rapier':        ['Florete de Duelo',     ''],
   // Weapons — elite
-  'Steel Greatsword':      ['Montante de Aço',      'Uma lâmina enorme de aço.'],
-  "Knight's Blade":        ['Lâmina do Cavaleiro',  'Reluzente e mortal.'],
-  'Warhammer':             ['Martelo de Guerra',    'Um golpe esmagador.'],
-  'Obsidian Glaive':       ['Glaive de Obsidiana',  'Vidro vulcânico afiado.'],
+  'Steel Greatsword':      ['Montante de Aço',      ''],
+  "Knight's Blade":        ['Lâmina do Cavaleiro',  ''],
+  'Warhammer':             ['Martelo de Guerra',    ''],
+  'Obsidian Glaive':       ['Glaive de Obsidiana',  ''],
+  'Halberd of Valor':      ['Alabarda do Valor',    ''],
+  'Runed Claymore':        ['Espadão Rúnico',       ''],
+  'Twin Falchions':        ['Falchions Gémeos',     ''],
+  'Pike of Ruin':          ['Pique da Ruína',       ''],
+  'Siege Crossbow':        ['Besta de Cerco',       ''],
+  'Mithril Axe':           ['Machado de Mithril',   ''],
+  'Voulge of Storms':      ['Voulge das Tempestades',''],
+  "Executioner's Edge":    ['Gume do Carrasco',     ''],
   // Weapons — legendary
-  'Dragonfang Blade':      ['Lâmina Presa-de-Dragão', 'Forjada com presas de dragão.'],
-  'Soulreaver Scythe':     ['Foice Ceifa-Almas',    'Ceifa a própria alma.'],
-  'Celestial Edge':        ['Gume Celestial',       'Brilha com luz divina.'],
-  'Underworld Greatsword': ['Montante do Submundo', 'A arma do próprio senhor das trevas.'],
+  'Dragonfang Blade':      ['Lâmina Presa-de-Dragão',''],
+  'Soulreaver Scythe':     ['Foice Ceifa-Almas',    ''],
+  'Celestial Edge':        ['Gume Celestial',       ''],
+  'Underworld Greatsword': ['Montante do Submundo',  ''],
+  'Voidpiercer':           ['Perfura-Vazio',        ''],
+  'Phoenix Glaive':        ['Glaive da Fénix',      ''],
+  'Doombringer':           ['Arauto da Perdição',   ''],
+  'Eclipse Saber':         ['Sabre do Eclipse',     ''],
+  'Worldender Maul':       ['Marreta Fim-do-Mundo', ''],
+  'Abyssal Halberd':       ['Alabarda Abissal',     ''],
+  'Starfall Blade':        ['Lâmina Queda-de-Estrela',''],
+  'Crown of Sunder':       ['Coroa da Ruptura',     ''],
   // Characters
   'Survivor':            ['Sobrevivente',         'O teu herói inicial.'],
   'Squire':              ['Escudeiro',            'Um aprendiz determinado.'],
