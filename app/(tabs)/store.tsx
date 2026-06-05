@@ -48,6 +48,7 @@ const TYPE_COLOR: Record<string, string> = {
 
 const isPremium = (i: StoreItem) => i.premium_cost > 0;
 const isFree    = (i: StoreItem) => i.premium_cost === 0 && i.cost === 0;
+const RESALE    = 0.6;  // gold refunded for the gear you trade in when upgrading
 
 // ── Add Reward Modal ──────────────────────────────────────────────
 function AddRewardModal({ visible, householdId, createdBy, onClose, onSaved }: {
@@ -206,8 +207,20 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   async function buy(item: StoreItem) {
     if (!profile) return;
     const usesGems = isPremium(item);
-    const price    = usesGems ? item.premium_cost : item.cost;
-    const balance  = usesGems ? (profile.gems ?? 0) : profile.points;
+    const isGear   = item.item_type === 'weapon' || item.item_type === 'armor';
+
+    // Trade-in: buying gear with gold refunds 60% of the currently-equipped same-type
+    // item's cost and replaces it — keeps upgrades affordable and the bag tidy.
+    const tradeIn = isGear && !usesGems
+      ? owned.find(o => o.equipped && o.item_id !== item.id &&
+          items.find(i => i.id === o.item_id)?.item_type === item.item_type)
+      : undefined;
+    const tradeInItem = tradeIn ? items.find(i => i.id === tradeIn.item_id) : undefined;
+    const refund = tradeInItem ? Math.round(RESALE * tradeInItem.cost) : 0;
+
+    const listPrice = usesGems ? item.premium_cost : item.cost;
+    const price     = Math.max(0, listPrice - refund);
+    const balance   = usesGems ? (profile.gems ?? 0) : profile.points;
 
     if (price > 0 && balance < price) {
       if (usesGems) Alert.alert(t('store.notEnoughGems'), t('store.notEnoughGemsBody', { cost: price, have: balance }));
@@ -216,7 +229,6 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
     }
     setBuying(item.id);
 
-    // Pay with the right currency, then add to the bag (stacking quantity for repeats).
     if (usesGems) {
       await supabase.from('profiles').update({ gems: balance - price } as any).eq('id', profile.id);
     } else {
@@ -225,25 +237,28 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
         .eq('id', profile.id);
     }
 
-    const existing = owned.find(o => o.item_id === item.id);
-    if (existing) {
-      await supabase.from('player_items').update({ quantity: (existing.quantity ?? 1) + 1 }).eq('id', existing.id);
+    if (isGear) {
+      // Remove the traded-in item, add the new one, then equip it.
+      if (tradeIn) await supabase.from('player_items').delete().eq('id', tradeIn.id);
+      const existing = owned.find(o => o.item_id === item.id && o.id !== tradeIn?.id);
+      if (!existing) await supabase.from('player_items').insert({ profile_id: profile.id, item_id: item.id, quantity: 1, equipped: false } as any);
+      await equipItem(item);
     } else {
-      await supabase.from('player_items').insert({ profile_id: profile.id, item_id: item.id, quantity: 1, equipped: false } as any);
+      const existing = owned.find(o => o.item_id === item.id);
+      if (existing) await supabase.from('player_items').update({ quantity: (existing.quantity ?? 1) + 1 }).eq('id', existing.id);
+      else await supabase.from('player_items').insert({ profile_id: profile.id, item_id: item.id, quantity: 1, equipped: false } as any);
     }
 
     await refreshProfile();
     await refreshOwned();
     setBuying(null);
 
-    // Characters become playable immediately; gear can be equipped; rest lands in the bag.
     if (item.item_type === 'character') {
       await selectCharacter(item);
-    } else if (item.item_type === 'weapon' || item.item_type === 'armor') {
-      Alert.alert(t('store.bought', { name: itemName(item.name) }), t('store.equipNow'), [
-        { text: t('store.keepInBag'), style: 'cancel' },
-        { text: t('store.equip'), onPress: () => equipItem(item) },
-      ]);
+    } else if (isGear) {
+      Alert.alert(t('store.equipped'),
+        refund > 0 ? t('store.tradedBody', { name: itemName(item.name), refund })
+                   : t('store.equippedBody', { name: itemName(item.name) }));
     } else {
       Alert.alert(t('store.addedBag'), t('store.addedBagBody', { name: itemName(item.name) }));
     }

@@ -28,7 +28,10 @@ function sim({upgradeEvery=5, stopAt=999}={}){
     const pool=LVLHP[level-1];
     if(fl.f>=storeFloor && fl.f<=stopAt && (fl.f%upgradeEvery===0||ownedW===0)){
       const tgt=weaponForFloor(fl.f);
-      if(tgt>ownedW && gold>=weapons[tgt-1].cost){gold-=weapons[tgt-1].cost; ownedW=tgt;}
+      // Trade-in: buying refunds 60% of the currently-equipped weapon's cost.
+      const refund = ownedW>0 ? Math.round(0.6*weapons[ownedW-1].cost) : 0;
+      const net = weapons[tgt-1].cost - refund;
+      if(tgt>ownedW && gold>=net){gold-=net; ownedW=tgt;}
     }
     const dmgPerChore=1+(ownedW>0?weapons[ownedW-1].dmg:1);
     const killDays=fl.hp/(CPD*dmgPerChore);

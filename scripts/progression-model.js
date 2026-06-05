@@ -18,7 +18,16 @@ const stepCost= s => round(10*Math.pow(s,2.0));             // gold cost, per st
 const TKILL=f=>clamp(0.3+6.7*Math.pow(f/F,1.2),0.3,7);       // kill time @ intended gear (<=7d)
 const levelForFloor=f=>clamp(round(1+(LMAX-1)*Math.pow(f/F,0.85)),1,LMAX);
 const HP=L=>round(25+8*Math.pow(L,1.4));
-const MONEY=f=>round(7*Math.pow(f,1.05));
+// Gold income tracks the WEAPON-COST curve (back-loaded) so you can only ever afford
+// roughly the weapon you're meant to have — never rush a far-ahead weapon. Early floors
+// pay a trickle; late floors pay a lot. (`sf` = continuous power step at floor f.)
+// Linear-in-step gold → cumulative gold ∝ step² ∝ weapon cost, so you can only ever
+// afford ~the weapon you're meant to have (never rush ahead) at ANY floor. Frequent
+// upgrades stay affordable because buying a weapon refunds 60% of your old one (resale).
+const GOLD_K = 16;
+const RESALE = 0.6;
+const sf = f => clamp(1 + (f - storeFloor) / (F - storeFloor) * (NSTEPS - 1), 0, NSTEPS);
+const MONEY = f => Math.max(1, round(GOLD_K * sf(f)));
 // Attrition fraction ramps UP with depth so the late floors keep demanding the newest
 // weapon — falling a step behind near the top is lethal, no coasting.
 const BETA=f=>0.18 + 0.12*(f/F);
@@ -93,4 +102,12 @@ console.log('\nweapon steps (dmg / cost):');
 for(let s=1;s<=NSTEPS;s++) process.stdout.write(`s${s}:+${stepDmg(s)}/$${stepCost(s)}  `+(s%5===0?'\n':''));
 const tot=[];for(let f=1;f<=F;f++)tot.push(MONEY(f));
 console.log('total gold(100):',tot.reduce((a,b)=>a+b,0),'| sum of 20 step costs:',Array.from({length:NSTEPS},(_,i)=>stepCost(i+1)).reduce((a,b)=>a+b,0));
+console.log('\nRUSH CHECK — cumulative gold vs highest weapon step affordable (intended in parens):');
+let cum=0; let cf=1;
+for(let f=1;f<=F;f++){cum+=MONEY(f);
+  if([9,12,15,20,25,30,50,75,100].includes(f)){
+    let best=0; for(let s=1;s<=NSTEPS;s++) if(stepCost(s)<=cum) best=s;
+    console.log(`  floor ${String(f).padStart(3)}: gold ${String(cum).padStart(6)}  can afford up to step ${best} (+${best?stepDmg(best):0})  [intended step ${intendedStep(f)}]`);
+  }
+}
 console.log('files written: /tmp/floors.sql /tmp/weapons.sql /tmp/levels.txt');
