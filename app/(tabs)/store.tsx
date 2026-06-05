@@ -686,7 +686,9 @@ const cc = StyleSheet.create({
 
   weaponCard:  { justifyContent: 'space-between' },
   weaponEmoji: { fontSize: Math.round(CAROUSEL * 0.5), height: CAROUSEL, lineHeight: CAROUSEL, textAlign: 'center' },
-  weaponSprite:{ width: CAROUSEL, height: CAROUSEL },
+  // Small (48px) like the equipped slot — the sprites are low-res, so a big upscale blurs
+  // them. Centered in the CAROUSEL-tall area so cards keep a consistent height.
+  weaponSprite:{ width: 48, height: 48, marginVertical: Math.max(0, (CAROUSEL - 48) / 2) },
   weaponStat:  { fontFamily: F.pixel, fontSize: 8 },
 
   cardBtn:        { width: '100%', borderRadius: 8, paddingVertical: 6, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: '#0006' },
