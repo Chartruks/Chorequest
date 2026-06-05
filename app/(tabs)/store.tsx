@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Dimensions, FlatList, Modal,
+  ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal,
   Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +9,7 @@ import { Database } from '../../types/database';
 import HeroSprite from '../../components/HeroSprite';
 import { t } from '../../lib/i18n';
 import { itemName } from '../../lib/content';
+import { weaponSprite } from '../../lib/weaponArt';
 import { C, F } from '../../constants/theme';
 
 type StoreItem  = Database['public']['Tables']['store_items']['Row'];
@@ -162,7 +163,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   const [buying, setBuying]     = useState<string | null>(null);
   const [showAddReward, setShowAddReward] = useState(false);
   const [showGemShop, setShowGemShop]     = useState(false);
-  const [gearPopup, setGearPopup] = useState<{ name: string; emoji: string; stat: string; refund: number; oldName: string } | null>(null);
+  const [gearPopup, setGearPopup] = useState<{ name: string; emoji: string; sprite: any; stat: string; refund: number; oldName: string } | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -262,6 +263,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
       setGearPopup({
         name: itemName(item.name).toUpperCase(),
         emoji: item.emoji,
+        sprite: weaponSprite(item),
         stat,
         refund,
         oldName: tradeInItem ? itemName(tradeInItem.name).toUpperCase() : '',
@@ -339,9 +341,12 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
     // Weapon
     const isOwned    = !!ownedEntry;
     const isEquipped = ownedEntry?.equipped ?? false;
+    const sprite = weaponSprite(item);
     return (
       <View key={item.id} style={[cc.card, cc.weaponCard, { borderColor: isOwned ? color : C.border }]}>
-        <Text style={cc.weaponEmoji}>{item.emoji}</Text>
+        {sprite
+          ? <Image source={sprite} style={cc.weaponSprite} resizeMode="contain" />
+          : <Text style={cc.weaponEmoji}>{item.emoji}</Text>}
         <Text style={[cc.cardName, isOwned && { color }]} numberOfLines={1}>{itemName(item.name).toUpperCase()}</Text>
         <Text style={[cc.weaponStat, { color: C.damage }]}>+{item.damage_bonus} ⚔️</Text>
         {isEquipped ? (
@@ -364,7 +369,8 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   }
 
   function renderCarousel(kind: 'character' | 'weapon') {
-    const list = items.filter(i => i.item_type === kind);
+    // Hide the free starter weapon (cost 0) — it's already equipped, not for sale.
+    const list = items.filter(i => i.item_type === kind && !(kind === 'weapon' && i.cost === 0));
     return (
       <ScrollView contentContainerStyle={cc.list} showsVerticalScrollIndicator={false}>
         {RARITIES.map(r => {
@@ -555,7 +561,9 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
         <Pressable style={pp.overlay} onPress={() => setGearPopup(null)}>
           <View style={pp.card}>
             <Text style={pp.title}>{t('store.equipped')}</Text>
-            <Text style={pp.emoji}>{gearPopup.emoji}</Text>
+            {gearPopup.sprite
+              ? <Image source={gearPopup.sprite} style={pp.sprite} resizeMode="contain" />
+              : <Text style={pp.emoji}>{gearPopup.emoji}</Text>}
             <Text style={pp.name}>{gearPopup.name}</Text>
             <Text style={pp.stat}>{gearPopup.stat}</Text>
             {gearPopup.refund > 0 && (
@@ -678,6 +686,7 @@ const cc = StyleSheet.create({
 
   weaponCard:  { justifyContent: 'space-between' },
   weaponEmoji: { fontSize: Math.round(CAROUSEL * 0.5), height: CAROUSEL, lineHeight: CAROUSEL, textAlign: 'center' },
+  weaponSprite:{ width: CAROUSEL, height: CAROUSEL },
   weaponStat:  { fontFamily: F.pixel, fontSize: 8 },
 
   cardBtn:        { width: '100%', borderRadius: 8, paddingVertical: 6, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: '#0006' },
@@ -697,6 +706,7 @@ const pp = StyleSheet.create({
   },
   title:    { fontFamily: F.pixel, fontSize: 9, color: C.damage, letterSpacing: 2 },
   emoji:    { fontSize: 52, marginVertical: 4 },
+  sprite:   { width: 72, height: 72, marginVertical: 4 },
   name:     { fontFamily: F.pixel, fontSize: 11, color: C.text, textAlign: 'center', letterSpacing: 0.5, lineHeight: 18 },
   stat:     { fontFamily: F.pixel, fontSize: 10, color: C.damage },
   tradeBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', backgroundColor: C.cardAlt, borderWidth: 2, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginTop: 6 },

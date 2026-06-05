@@ -18,6 +18,7 @@ import {
 } from '../../lib/towerEngine';
 import { maxHpForLevel } from '../../lib/towerEngine';
 import { SKILLS, getSkills, spentPoints } from '../../lib/skills';
+import { weaponSprite } from '../../lib/weaponArt';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database';
 import { C, F } from '../../constants/theme';
@@ -560,7 +561,9 @@ export default function GameScreen() {
                       onPress={() => setShowBag(true)}
                     >
                       {item
-                        ? <Text style={s.slotEmoji}>{item.store_items.emoji}</Text>
+                        ? (weaponSprite(item.store_items)
+                            ? <Image source={weaponSprite(item.store_items)} style={s.slotSprite} resizeMode="contain" />
+                            : <Text style={s.slotEmoji}>{item.store_items.emoji}</Text>)
                         : <Text style={s.slotGhost}>{ph}</Text>}
                     </Pressable>
                   ))}
@@ -709,7 +712,9 @@ export default function GameScreen() {
                   const qty = pi.quantity ?? 1;
                   return (
                     <View key={pi.id} style={[s.bagRow, pi.equipped && s.bagRowEquipped]}>
-                      <Text style={s.bagEmoji}>{st.emoji}</Text>
+                      {weaponSprite(st)
+                        ? <Image source={weaponSprite(st)} style={s.bagSprite} resizeMode="contain" />
+                        : <Text style={s.bagEmoji}>{st.emoji}</Text>}
                       <View style={{ flex: 1 }}>
                         <Text style={s.bagName}>{itemName(st.name).toUpperCase()}{isConsumable && qty > 1 ? `  x${qty}` : ''}</Text>
                         <View style={s.bagStats}>
@@ -1126,6 +1131,7 @@ const s = StyleSheet.create({
   },
   bagRowEquipped: { borderColor: C.primary },
   bagEmoji:       { fontSize: 30 },
+  bagSprite:      { width: 34, height: 34 },
   bagName:        { fontFamily: F.pixel, fontSize: 9, color: C.text, marginBottom: 4 },
   bagStats:       { flexDirection: 'row', gap: 10 },
   bagStat:        { fontFamily: F.pixel, fontSize: 8 },
@@ -1200,6 +1206,7 @@ const s = StyleSheet.create({
     borderRadius: 12, alignItems: 'center', justifyContent: 'center',
   },
   slotEmoji: { fontSize: 32 },
+  slotSprite:{ width: 48, height: 48 },
   slotPlus:  { fontFamily: F.pixel, fontSize: 22, color: C.border },
   slotGhost: { fontSize: 30, opacity: 0.25 },
 

@@ -87,7 +87,10 @@ let wSql='insert into store_items (name, item_type, is_character, rarity, cost, 
 const wRows=[];
 for(let w=1;w<=NW;w++){
   const tier=Math.floor((w-1)/12), idx=(w-1)%12, s=stepOf(w);
-  wRows.push(`  ('${TIER_NAMES[tier][idx].replace(/'/g,"''")}', 'weapon', false, '${RAR[tier]}', ${stepCost(s)}, 0, ${stepDmg(s)}, 0, 0, '${WEMOJI[idx]}', ${10+w})`);
+  // Weapon 1 is the free, non-purchasable starter (+1). The buyable progression is 2..60.
+  const cost = w===1 ? 0 : stepCost(s);
+  const dmg  = w===1 ? 1 : stepDmg(s);
+  wRows.push(`  ('${TIER_NAMES[tier][idx].replace(/'/g,"''")}', 'weapon', false, '${RAR[tier]}', ${cost}, 0, ${dmg}, 0, 0, '${WEMOJI[idx]}', ${10+w})`);
 }
 fs.writeFileSync('/tmp/weapons.sql', wSql+wRows.join(',\n')+';\n');
 
