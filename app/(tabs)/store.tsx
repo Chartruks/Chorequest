@@ -162,6 +162,7 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
   const [buying, setBuying]     = useState<string | null>(null);
   const [showAddReward, setShowAddReward] = useState(false);
   const [showGemShop, setShowGemShop]     = useState(false);
+  const [gearPopup, setGearPopup] = useState<{ name: string; emoji: string; stat: string; refund: number; oldName: string } | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -256,9 +257,15 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
     if (item.item_type === 'character') {
       await selectCharacter(item);
     } else if (isGear) {
-      Alert.alert(t('store.equipped'),
-        refund > 0 ? t('store.tradedBody', { name: itemName(item.name), refund })
-                   : t('store.equippedBody', { name: itemName(item.name) }));
+      // In-game popup (not a native alert) showing the new gear + trade-in payout.
+      const stat = item.item_type === 'weapon' ? `+${item.damage_bonus} ⚔️` : `+${item.hp_bonus} 🛡️`;
+      setGearPopup({
+        name: itemName(item.name).toUpperCase(),
+        emoji: item.emoji,
+        stat,
+        refund,
+        oldName: tradeInItem ? itemName(tradeInItem.name).toUpperCase() : '',
+      });
     } else {
       Alert.alert(t('store.addedBag'), t('store.addedBagBody', { name: itemName(item.name) }));
     }
@@ -542,6 +549,27 @@ export default function StoreScreen({ onClose }: { onClose?: () => void }) {
           }}
         />
       )}
+
+      {/* In-game gear / trade-in popup (replaces the native alert). */}
+      {gearPopup && (
+        <Pressable style={pp.overlay} onPress={() => setGearPopup(null)}>
+          <View style={pp.card}>
+            <Text style={pp.title}>{t('store.equipped')}</Text>
+            <Text style={pp.emoji}>{gearPopup.emoji}</Text>
+            <Text style={pp.name}>{gearPopup.name}</Text>
+            <Text style={pp.stat}>{gearPopup.stat}</Text>
+            {gearPopup.refund > 0 && (
+              <View style={pp.tradeBox}>
+                <Text style={pp.tradeLbl}>{t('store.tradedIn', { name: gearPopup.oldName })}</Text>
+                <Text style={pp.tradeGold}>+💰{gearPopup.refund}</Text>
+              </View>
+            )}
+            <Pressable style={({ pressed }) => [pp.btn, pressed && pp.btnPressed]} onPress={() => setGearPopup(null)}>
+              <Text style={pp.btnText}>{t('game.continue')}</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
@@ -659,4 +687,22 @@ const cc = StyleSheet.create({
 
   stateTag:    { width: '100%', borderWidth: 2, borderRadius: 8, paddingVertical: 4, alignItems: 'center' },
   stateTagTxt: { fontFamily: F.pixel, fontSize: 7, letterSpacing: 0.5 },
+});
+
+const pp = StyleSheet.create({
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000a', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  card: {
+    width: '100%', maxWidth: 320, backgroundColor: C.card, borderWidth: 3, borderColor: C.damage,
+    borderBottomWidth: 6, borderBottomColor: C.damageDark, borderRadius: 18, padding: 22, alignItems: 'center', gap: 8,
+  },
+  title:    { fontFamily: F.pixel, fontSize: 9, color: C.damage, letterSpacing: 2 },
+  emoji:    { fontSize: 52, marginVertical: 4 },
+  name:     { fontFamily: F.pixel, fontSize: 11, color: C.text, textAlign: 'center', letterSpacing: 0.5, lineHeight: 18 },
+  stat:     { fontFamily: F.pixel, fontSize: 10, color: C.damage },
+  tradeBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', backgroundColor: C.cardAlt, borderWidth: 2, borderColor: C.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginTop: 6 },
+  tradeLbl: { flex: 1, fontFamily: F.body, fontSize: 15, color: C.textMuted },
+  tradeGold:{ fontFamily: F.pixel, fontSize: 10, color: C.gold },
+  btn:        { backgroundColor: C.damage, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 28, alignItems: 'center', borderBottomWidth: 4, borderBottomColor: C.damageDark, marginTop: 10, width: '100%' },
+  btnPressed: { borderBottomWidth: 0, marginTop: 14 },
+  btnText:    { fontFamily: F.pixel, fontSize: 9, color: C.bg, letterSpacing: 1 },
 });
